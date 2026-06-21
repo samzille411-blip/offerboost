@@ -160,13 +160,12 @@ export default function HomePage() {
   const handleAnalyze = async () => {
     setError("");
     setLoadingAnalyze(true);
-    setAnalyze(null);
-    setUnlocked(false);
-    setAiReport("");
-    setShowPaywall(false);
     try {
       if (isObviouslyInvalidInput(resume, jd)) {
         setAnalyze(buildInvalidInputResult());
+        setUnlocked(false);
+        setAiReport("");
+        setShowPaywall(false);
         return;
       }
 
@@ -189,8 +188,12 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "分析失败");
       setAnalyze(data);
+      setUnlocked(false);
+      setAiReport("");
       if (data.inputValid !== false) {
         setShowPaywall(true);
+      } else {
+        setShowPaywall(false);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "网络错误");

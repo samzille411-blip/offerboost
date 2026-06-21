@@ -33,16 +33,6 @@ export function middleware(req: NextRequest) {
   const ip = getClientIp(req);
   const path = req.nextUrl.pathname;
 
-  if (path === "/api/analyze") {
-    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 5);
-    if (!checkRateLimit(`mw:analyze:${ip}`, max, WINDOW_MS)) {
-      return NextResponse.json(
-        { error: "操作过于频繁，请稍后再试", code: "rate_limited" },
-        { status: 429, headers: { "Retry-After": "60" } }
-      );
-    }
-  }
-
   if (path === "/api/use-card") {
     const max = Number(process.env.RATE_LIMIT_MAX_USE_CARD || 5);
     if (!checkRateLimit(`mw:use-card:${ip}`, max, WINDOW_MS)) {
@@ -57,5 +47,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/analyze", "/api/use-card"],
+  matcher: ["/api/use-card"],
 };

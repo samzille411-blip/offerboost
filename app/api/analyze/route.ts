@@ -6,6 +6,7 @@ import { fetchAnalyzeFromLlm } from "@/lib/fetch-analyze-llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { parseAnalyzeLlmJson } from "@/lib/parse-analyze-json";
 import { buildInvalidInputResult, isObviouslyInvalidInput } from "@/lib/input-validation";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { generatePremiumTeaser } from "@/lib/premium-teaser";
 
@@ -42,6 +43,15 @@ export async function POST(req: Request) {
 
     if (!process.env.LLM_API_KEY) {
       return NextResponse.json({ error: "AI 服务未配置，请联系管理员" }, { status: 503 });
+    }
+
+    const ip = getClientIp(req);
+    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 10);
+    if (!checkRateLimit(`analyze-llm:${ip}`, max)) {
+      return NextResponse.json(
+        { error: userMessages.rateLimited, code: "rate_limited" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
     }
 
     let raw: string;

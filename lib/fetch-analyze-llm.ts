@@ -1,12 +1,12 @@
 import { getLLMClient, getAnalyzeModel, ANALYZE_PROMPT } from "@/lib/llm";
 import { parseAnalyzeLlmJson } from "@/lib/parse-analyze-json";
 
-const MAX_ATTEMPTS = 2;
+const MAX_ATTEMPTS = 3;
 
 export async function fetchAnalyzeFromLlm(resume: string, jd: string): Promise<string> {
   const client = getLLMClient();
   const model = getAnalyzeModel();
-  const maxTokens = Number(process.env.LLM_ANALYZE_MAX_TOKENS || 400);
+  const maxTokens = Number(process.env.LLM_ANALYZE_MAX_TOKENS || 512);
 
   let lastRaw = "";
 
@@ -28,7 +28,8 @@ export async function fetchAnalyzeFromLlm(resume: string, jd: string): Promise<s
       ],
     });
 
-    lastRaw = completion.choices[0]?.message?.content || "";
+    lastRaw = completion.choices[0]?.message?.content?.trim() || "";
+    if (!lastRaw) continue;
     if (parseAnalyzeLlmJson(lastRaw)) return lastRaw;
   }
 
