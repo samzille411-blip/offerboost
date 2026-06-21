@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { getLLMClient, getAnalyzeModel, ANALYZE_PROMPT } from "@/lib/llm";
+import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req);
-    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 10);
+    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 5);
     if (!checkRateLimit(`analyze:${ip}`, max)) {
       return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
     }
@@ -22,15 +23,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "AI 服务未配置，请联系管理员" }, { status: 503 });
     }
 
-    const client = getLLMClient();
-    const completion = await client.chat.completions.create({
-      model: getAnalyzeModel(),
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: ANALYZE_PROMPT },
-        { role: "user", content: `【用户简历】\n${resume}\n\n【目标岗位JD】\n${jd}` },
-      ],
-    });
+    let completion;
+    try {
+      const client = getLLMClient();
+      completion = await client.chat.completions.create({
+        model: getAnalyzeModel(),
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: ANALYZE_PROMPT },
+          { role: "user", content: `【用户简历】\n${resume}\n\n【目标岗位JD】\n${jd}` },
+        ],
+      });
+    } catch (e) {
+      const mapped = mapLlmErrorToResponse(e);
+      return NextResponse.json({ error: mapped.error, code: mapped.code }, { status: mapped.status });
+    }
 
     const raw = completion.choices[0]?.message?.content || "";
     if (raw.includes("检测到违规内容")) {
@@ -60,6 +67,7 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("analyze error", e);
-    return NextResponse.json({ error: "服务器内部错误" }, { status: 500 });
+    const mapped = mapLlmErrorToResponse(e);
+    return NextResponse.json({ error: mapped.error, code: mapped.code }, { status: mapped.status });
   }
 }

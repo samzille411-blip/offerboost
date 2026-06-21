@@ -1,6 +1,10 @@
 export const LS_CARD = "offerboost_card";
 export const LS_REPORT = "offerboost_report";
 export const LS_INPUTS = "offerboost_inputs";
+export const SS_LLM_PROBE = "offerboost_llm_probe_at";
+
+/** 浏览器会话内探活缓存（毫秒），与 LLM_PROBE_CACHE_MS 保持一致 */
+export const LLM_PROBE_CLIENT_TTL_MS = 3600000;
 
 export type AnalyzeResult = {
   score: number;

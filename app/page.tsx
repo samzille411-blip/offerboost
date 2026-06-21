@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PaywallModal from "@/components/PaywallModal";
 import Footer from "@/components/Footer";
-import { AnalyzeResult, LS_CARD, LS_INPUTS, LS_REPORT, getTiers } from "@/lib/constants";
+import { AnalyzeResult, LS_CARD, LS_INPUTS, LS_REPORT, SS_LLM_PROBE, LLM_PROBE_CLIENT_TTL_MS, getTiers } from "@/lib/constants";
 
 function uuid() {
   return crypto.randomUUID();
@@ -56,6 +56,17 @@ export default function HomePage() {
     setUnlocked(false);
     setAiReport("");
     try {
+      const probedAt = sessionStorage.getItem(SS_LLM_PROBE);
+      const probeFresh =
+        probedAt && Date.now() - Number(probedAt) < LLM_PROBE_CLIENT_TTL_MS;
+
+      if (!probeFresh) {
+        const probeRes = await fetch("/api/llm-probe", { method: "POST" });
+        const probeData = await probeRes.json();
+        if (!probeRes.ok) throw new Error(probeData.error || "AI 服务暂不可用");
+        sessionStorage.setItem(SS_LLM_PROBE, String(Date.now()));
+      }
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

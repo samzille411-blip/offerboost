@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
 import { getLLMClient, getPremiumModel, buildLevelPrompt } from "@/lib/llm";
+import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { checkRateLimit, getClientIp, sha256 } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -89,7 +90,11 @@ export async function POST(req: Request) {
         .update({ used_times: Math.max(0, card.used_times) })
         .eq("code", code);
       console.error("llm error, rolled back", llmErr);
-      return NextResponse.json({ error: "AI 生成失败，次数已回滚，请重试" }, { status: 502 });
+      const mapped = mapLlmErrorToResponse(llmErr);
+      return NextResponse.json(
+        { error: `${mapped.error}（次数已回滚）`, code: mapped.code },
+        { status: mapped.status }
+      );
     }
 
     const contentHash = await sha256(`${resume}\n${jd}`);
