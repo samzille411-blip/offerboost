@@ -50,21 +50,29 @@ export default function HomePage() {
     [analyze?.score]
   );
 
+  const persistInputs = useCallback((nextResume: string, nextJd: string) => {
+    if (!nextResume.trim() && !nextJd.trim()) {
+      localStorage.removeItem(LS_INPUTS);
+      return;
+    }
+    localStorage.setItem(LS_INPUTS, JSON.stringify({ resume: nextResume, jd: nextJd }));
+  }, []);
+
   const syncPinnedField = useCallback(
     (field: "resume" | "jd", value: string, pinned: boolean) => {
       if (field === "resume") {
-        if (pinned && value.trim()) {
+        if (pinned) {
           localStorage.setItem(LS_SAVED_RESUME, value);
           localStorage.setItem(LS_PIN_RESUME, "1");
-        } else if (!pinned) {
+        } else {
           localStorage.setItem(LS_PIN_RESUME, "0");
         }
         return;
       }
-      if (pinned && value.trim()) {
+      if (pinned) {
         localStorage.setItem(LS_SAVED_JD, value);
         localStorage.setItem(LS_PIN_JD, "1");
-      } else if (!pinned) {
+      } else {
         localStorage.setItem(LS_PIN_JD, "0");
       }
     },
@@ -91,11 +99,17 @@ export default function HomePage() {
         inputsJd = p.jd || "";
       }
 
-      if (resumePinned && pinnedResume) setResume(pinnedResume);
-      else if (inputsResume) setResume(inputsResume);
+      if (resumePinned) {
+        setResume(pinnedResume ?? "");
+      } else if (inputsResume) {
+        setResume(inputsResume);
+      }
 
-      if (jdPinned && pinnedJd) setJd(pinnedJd);
-      else if (inputsJd) setJd(inputsJd);
+      if (jdPinned) {
+        setJd(pinnedJd ?? "");
+      } else if (inputsJd) {
+        setJd(inputsJd);
+      }
 
       if (savedCard) setCardCode(savedCard);
       if (savedReport) {
@@ -150,14 +164,26 @@ export default function HomePage() {
   };
 
   const handleClearResume = () => {
-    handleResumeChange("");
-    if (pinResume) localStorage.removeItem(LS_SAVED_RESUME);
+    setResume("");
+    syncPinnedField("resume", "", pinResume);
+    persistInputs("", jd);
+    localStorage.removeItem(LS_REPORT);
+    setAnalyze(null);
+    setUnlocked(false);
+    setAiReport("");
+    setShowPaywall(false);
     setError("");
   };
 
   const handleClearJd = () => {
-    handleJdChange("");
-    if (pinJd) localStorage.removeItem(LS_SAVED_JD);
+    setJd("");
+    syncPinnedField("jd", "", pinJd);
+    persistInputs(resume, "");
+    localStorage.removeItem(LS_REPORT);
+    setAnalyze(null);
+    setUnlocked(false);
+    setAiReport("");
+    setShowPaywall(false);
     setError("");
   };
 
