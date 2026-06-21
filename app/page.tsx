@@ -145,6 +145,18 @@ export default function HomePage() {
     setError("");
   };
 
+  const handleClearResume = () => {
+    handleResumeChange("");
+    if (pinResume) localStorage.removeItem(LS_SAVED_RESUME);
+    setError("");
+  };
+
+  const handleClearJd = () => {
+    handleJdChange("");
+    if (pinJd) localStorage.removeItem(LS_SAVED_JD);
+    setError("");
+  };
+
   const handleAnalyze = async () => {
     setError("");
     setLoadingAnalyze(true);
@@ -232,7 +244,17 @@ export default function HomePage() {
       <div className="max-w-6xl mx-auto px-4 py-8 grid lg:grid-cols-2 gap-8">
         <section className="space-y-4">
           <div>
-            <label className="text-sm text-gray-400 mb-2 block">粘贴你的简历</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-gray-400">粘贴你的简历</label>
+              <button
+                type="button"
+                onClick={handleClearResume}
+                disabled={!resume.trim()}
+                className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                清空
+              </button>
+            </div>
             <textarea
               value={resume}
               onChange={(e) => handleResumeChange(e.target.value)}
@@ -251,7 +273,17 @@ export default function HomePage() {
             </label>
           </div>
           <div>
-            <label className="text-sm text-gray-400 mb-2 block">粘贴目标岗位 JD</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-gray-400">粘贴目标岗位 JD</label>
+              <button
+                type="button"
+                onClick={handleClearJd}
+                disabled={!jd.trim()}
+                className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              >
+                清空
+              </button>
+            </div>
             <textarea
               value={jd}
               onChange={(e) => handleJdChange(e.target.value)}
