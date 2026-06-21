@@ -18,6 +18,7 @@ import {
   LLM_PROBE_CLIENT_TTL_MS,
   getTiers,
 } from "@/lib/constants";
+import PremiumReport from "@/components/PremiumReport";
 import { DEMO_JD, DEMO_RESUME } from "@/lib/demo-sample";
 
 function uuid() {
@@ -370,11 +371,15 @@ export default function HomePage() {
                 {!unlocked && <div className="absolute inset-0 z-10 rounded-xl bg-black/30 backdrop-blur-[2px]" />}
                 <div className={!unlocked ? "blur-lock" : ""}>
                   <h3 className="text-sm font-semibold text-gold mb-2">AI 深度优化报告</h3>
-                  <pre className="whitespace-pre-wrap text-xs text-gray-300 font-sans leading-relaxed">
-                    {unlocked && aiReport
-                      ? aiReport
-                      : "STAR 法则改写 · ATS 关键词 · 面试题预测…\n（验证卡密后显示完整内容）"}
-                  </pre>
+                  {unlocked && aiReport ? (
+                    <PremiumReport content={aiReport} />
+                  ) : (
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      STAR 法则改写 · ATS 关键词 · 面试题预测…
+                      <br />
+                      （验证卡密后显示完整内容）
+                    </p>
+                  )}
                 </div>
                 {!unlocked && (
                   <div className="absolute inset-x-4 bottom-3 z-20 flex flex-col items-stretch gap-1">
