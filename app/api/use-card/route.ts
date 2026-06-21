@@ -4,16 +4,11 @@ import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
 import { getLLMClient, getPremiumModel, buildLevelPrompt, getPremiumMaxTokens } from "@/lib/llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
-import { checkRateLimit, getClientIp, sha256 } from "@/lib/rate-limit";
+import { enforceUseCardRateLimit } from "@/lib/use-card-rate-limit";
+import { getClientIp, sha256 } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
-    const ip = getClientIp(req);
-    const max = Number(process.env.RATE_LIMIT_MAX_USE_CARD || 5);
-    if (!checkRateLimit(`use-card:${ip}`, max)) {
-      return NextResponse.json({ error: userMessages.rateLimited, code: "rate_limited" }, { status: 429 });
-    }
-
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: "数据库未配置" }, { status: 503 });
     }
@@ -28,6 +23,19 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseAdmin();
     const code = String(card_code).trim();
+    const ip = getClientIp(req);
+
+    const { data: card, error: fetchError } = await supabase
+      .from("cards")
+      .select("code, total_times, used_times, level")
+      .eq("code", code)
+      .maybeSingle();
+
+    const exists = !!card && !fetchError;
+    const hasRemaining = exists && card.used_times < card.total_times;
+
+    const rateLimited = await enforceUseCardRateLimit(req, code, { exists, hasRemaining });
+    if (rateLimited) return rateLimited;
 
     // 短时幂等：同一 request_id 5 分钟内不重复扣次
     if (request_id) {
@@ -39,7 +47,6 @@ export async function POST(req: Request) {
         .gte("created_at", since)
         .maybeSingle();
       if (dup) {
-        const { data: card } = await supabase.from("cards").select("total_times, used_times, level").eq("code", code).single();
         return NextResponse.json({
           status: "success",
           remaining: card ? card.total_times - card.used_times : 0,
@@ -50,13 +57,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const { data: card, error: fetchError } = await supabase
-      .from("cards")
-      .select("*")
-      .eq("code", code)
-      .single();
-
-    if (fetchError || !card) {
+    if (!exists) {
       return NextResponse.json({ error: "卡密不存在，请前往合作平台获取" }, { status: 404 });
     }
 
