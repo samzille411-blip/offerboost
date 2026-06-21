@@ -71,8 +71,15 @@ export async function POST(req: Request) {
     const { data: redeem, error: redeemError } = await supabase.rpc("redeem_card", { p_code: code });
     if (redeemError || !redeem?.ok) {
       const err = redeem?.error || redeemError?.message;
-      if (err === "exhausted") return NextResponse.json({ error: "该卡密可用次数已耗尽" }, { status: 403 });
-      if (err === "not_found") return NextResponse.json({ error: "卡密不存在" }, { status: 404 });
+      if (err === "exhausted") {
+        return NextResponse.json(
+          { error: "该卡密可用次数已耗尽", code: "card_exhausted" },
+          { status: 403 }
+        );
+      }
+      if (err === "not_found") {
+        return NextResponse.json({ error: "卡密不存在", code: "card_not_found" }, { status: 404 });
+      }
       return NextResponse.json({ error: "核销失败，请重试" }, { status: 500 });
     }
 

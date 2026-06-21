@@ -22,7 +22,7 @@ import PremiumReport from "@/components/PremiumReport";
 import Toast from "@/components/Toast";
 import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
 import { DEMO_JD, DEMO_RESUME } from "@/lib/demo-sample";
-import { userMessages } from "@/lib/user-messages";
+import { classifyUnlockError, userMessages, type UnlockErrorCode } from "@/lib/user-messages";
 
 function uuid() {
   return crypto.randomUUID();
@@ -39,6 +39,9 @@ export default function HomePage() {
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const [loadingUnlock, setLoadingUnlock] = useState(false);
   const [error, setError] = useState("");
+  const [unlockError, setUnlockError] = useState<{ code: UnlockErrorCode; message: string } | null>(
+    null
+  );
   const [toast, setToast] = useState<{ message: string; kind: "info" | "warn" } | null>(null);
   const [pinResume, setPinResume] = useState(false);
   const [pinJd, setPinJd] = useState(false);
@@ -259,6 +262,7 @@ export default function HomePage() {
 
   const handleUnlock = async () => {
     setError("");
+    setUnlockError(null);
     setLoadingUnlock(true);
     const requestId = uuid();
     try {
@@ -270,14 +274,21 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) {
         if (res.status === 429 && showRateLimitToast(data.code, data.error)) return;
-        throw new Error(data.error || "验证失败");
+        const code =
+          data.code === "card_exhausted" || data.code === "card_not_found"
+            ? data.code
+            : classifyUnlockError(data.error || "", res.status);
+        setUnlockError({ code, message: data.error || "验证失败" });
+        return;
       }
       setAiReport(formatPremiumReportDisplay(data.aiContent));
       setUnlocked(true);
       setShowPaywall(false);
+      setUnlockError(null);
       persistUnlock(cardCode, formatPremiumReportDisplay(data.aiContent), { resume, jd });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "网络错误");
+      const message = e instanceof Error ? e.message : "网络错误";
+      setUnlockError({ code: "unlock_error", message });
     } finally {
       setLoadingUnlock(false);
     }
@@ -511,12 +522,19 @@ export default function HomePage() {
 
       <PaywallModal
         open={showPaywall}
-        onClose={() => setShowPaywall(false)}
+        onClose={() => {
+          setShowPaywall(false);
+          setUnlockError(null);
+        }}
         tiers={tiers}
         cardCode={cardCode}
-        onCardCodeChange={setCardCode}
+        onCardCodeChange={(v) => {
+          setCardCode(v);
+          setUnlockError(null);
+        }}
         onUnlock={handleUnlock}
         loading={loadingUnlock}
+        unlockError={unlockError}
       />
 
       <Footer />

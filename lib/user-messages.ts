@@ -11,7 +11,23 @@ export const userMessages = {
   rateLimitedIp: "您点得频繁了些，请稍等一分钟~",
   globalQueue:
     "当前 OfferBoost 全网匹配人数较多，请稍候 5~10 秒再次点击。感谢您的耐心！",
+  cardExhaustedTitle: "该卡密次数已用完",
+  cardExhaustedBody:
+    "这张激活码的所有次数已消耗完毕。请购买新卡密，继续解锁 STAR 改写、ATS 关键词与面试预测。",
+  cardNotFoundBody: "未找到该激活码，请核对后重试，或通过下方合作平台获取。",
 } as const;
+
+export type UnlockErrorCode = "card_exhausted" | "card_not_found" | "unlock_error";
+
+export function classifyUnlockError(message: string, httpStatus?: number): UnlockErrorCode {
+  if (httpStatus === 403 || message.includes("已耗尽") || message.includes("次数已用完")) {
+    return "card_exhausted";
+  }
+  if (httpStatus === 404 || message.includes("不存在")) {
+    return "card_not_found";
+  }
+  return "unlock_error";
+}
 
 export const LLM_BLOCKED_MARKER = "[[BLOCKED]]";
 
