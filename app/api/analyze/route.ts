@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLLMClient, getAnalyzeModel, ANALYZE_PROMPT } from "@/lib/llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
+import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -8,15 +9,15 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 5);
     if (!checkRateLimit(`analyze:${ip}`, max)) {
-      return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+      return NextResponse.json({ error: userMessages.rateLimited }, { status: 429 });
     }
 
     const { resume, jd } = await req.json();
     if (!resume?.trim() || !jd?.trim()) {
-      return NextResponse.json({ error: "简历与 JD 不能为空" }, { status: 400 });
+      return NextResponse.json({ error: userMessages.emptyResumeJd }, { status: 400 });
     }
     if (resume.length > 8000 || jd.length > 8000) {
-      return NextResponse.json({ error: "文本过长，请精简后重试" }, { status: 400 });
+      return NextResponse.json({ error: userMessages.tooLong }, { status: 400 });
     }
 
     if (!process.env.LLM_API_KEY) {
@@ -41,8 +42,8 @@ export async function POST(req: Request) {
     }
 
     const raw = completion.choices[0]?.message?.content || "";
-    if (raw.includes("检测到违规内容")) {
-      return NextResponse.json({ error: "检测到违规内容，无法优化" }, { status: 400 });
+    if (isBlockedLlmOutput(raw)) {
+      return NextResponse.json({ error: userMessages.blockedContent }, { status: 400 });
     }
 
     let parsed: { score?: number; issues?: string[]; summary?: string };
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
     } catch {
-      return NextResponse.json({ error: "AI 返回解析失败，请重试" }, { status: 502 });
+      return NextResponse.json({ error: userMessages.parseFailed }, { status: 502 });
     }
 
     const issues = (parsed.issues || []).slice(0, 3);

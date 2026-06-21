@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
 import { getLLMClient, getPremiumModel, buildLevelPrompt } from "@/lib/llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
+import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { checkRateLimit, getClientIp, sha256 } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const max = Number(process.env.RATE_LIMIT_MAX_USE_CARD || 5);
     if (!checkRateLimit(`use-card:${ip}`, max)) {
-      return NextResponse.json({ error: "请求过于频繁，请稍后再试" }, { status: 429 });
+      return NextResponse.json({ error: userMessages.rateLimited }, { status: 429 });
     }
 
     if (!isSupabaseConfigured()) {
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
 
     const { card_code, resume, jd, request_id } = await req.json();
     if (!card_code?.trim() || !resume?.trim() || !jd?.trim()) {
-      return NextResponse.json({ error: "卡密、简历与 JD 不能为空" }, { status: 400 });
+      return NextResponse.json({ error: userMessages.emptyUnlock }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
@@ -84,12 +85,21 @@ export async function POST(req: Request) {
       });
       aiContent = completion.choices[0]?.message?.content || "";
       if (!aiContent) throw new Error("empty response");
+      if (isBlockedLlmOutput(aiContent)) {
+        throw new Error("blocked_content");
+      }
     } catch (llmErr) {
       await supabase
         .from("cards")
         .update({ used_times: Math.max(0, card.used_times) })
         .eq("code", code);
       console.error("llm error, rolled back", llmErr);
+      if (llmErr instanceof Error && llmErr.message === "blocked_content") {
+        return NextResponse.json(
+          { error: `${userMessages.blockedContent}（次数已回滚，请修改内容后重试）` },
+          { status: 400 }
+        );
+      }
       const mapped = mapLlmErrorToResponse(llmErr);
       return NextResponse.json(
         { error: `${mapped.error}（次数已回滚）`, code: mapped.code },
