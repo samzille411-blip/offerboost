@@ -15,6 +15,7 @@ export async function fetchAnalyzeFromLlm(resume: string, jd: string): Promise<s
       model,
       temperature: 0,
       max_tokens: maxTokens,
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
