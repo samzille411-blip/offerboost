@@ -209,7 +209,12 @@ export default function HomePage() {
             <h1 className="text-xl font-bold tracking-tight">
               Offer<span className="text-accent">Boost</span>
             </h1>
-            <p className="text-xs text-gray-500 mt-1">AI 简历智能匹配 · 像素级对标 JD</p>
+            <p className="text-xs mt-1.5 leading-relaxed">
+              <span className="text-gray-200">AI 1分钟改成大厂简历</span>
+              <span className="text-gray-500"> · </span>
+              <span className="text-gray-400">像素级对标 JD</span>
+              <span className="text-gold ml-1">（1元自救体验）</span>
+            </p>
           </div>
           <span className="text-xs text-glow border border-glow/30 rounded-full px-3 py-1">免注册使用</span>
         </div>
@@ -315,6 +320,9 @@ export default function HomePage() {
               )}
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2">毒舌硬伤诊断（免费）</h3>
+                {analyze.inputValid !== false && (
+                  <p className="text-xs text-gray-500 mb-2">以下 3 条为 AI 真实诊断，解锁后可看 STAR 改写与 ATS 关键词</p>
+                )}
                 <ol className="list-decimal list-inside space-y-2 text-sm text-gray-300">
                   {analyze.issues.map((issue, i) => (
                     <li key={i}>{issue}</li>
@@ -322,7 +330,7 @@ export default function HomePage() {
                 </ol>
               </div>
 
-              <div className="relative rounded-xl border border-gray-800 bg-black/40 p-4 mt-4">
+              <div className={`relative rounded-xl border border-gray-800 bg-black/40 p-4 mt-4 ${!unlocked ? "pb-20" : ""}`}>
                 {!unlocked && <div className="absolute inset-0 z-10 rounded-xl bg-black/30 backdrop-blur-[2px]" />}
                 <div className={!unlocked ? "blur-lock" : ""}>
                   <h3 className="text-sm font-semibold text-gold mb-2">AI 深度优化报告</h3>
@@ -333,12 +341,15 @@ export default function HomePage() {
                   </pre>
                 </div>
                 {!unlocked && (
-                  <button
-                    onClick={() => setShowPaywall(true)}
-                    className="absolute inset-x-4 bottom-4 z-20 rounded-lg bg-gold text-black font-bold py-2 text-sm"
-                  >
-                    获取卡密解锁完整报告
-                  </button>
+                  <div className="absolute inset-x-4 bottom-3 z-20 flex flex-col items-stretch gap-1">
+                    <button
+                      onClick={() => setShowPaywall(true)}
+                      className="rounded-lg bg-gold hover:bg-gold/90 text-black font-bold py-2.5 text-sm transition"
+                    >
+                      获取激活码 · 1元起解锁完整报告
+                    </button>
+                    <p className="text-center text-[10px] text-gray-500">体验版 1 元起 · 合作平台购卡，输入激活码即可解锁</p>
+                  </div>
                 )}
               </div>
             </div>

@@ -30,9 +30,10 @@ export default function PaywallModal({
           <h3 className="text-lg font-bold text-white">解锁完整 AI 优化报告</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">×</button>
         </div>
-        <p className="text-sm text-gray-400 mb-4">
-          本站为工具展示平台，不涉及在线交易。请通过合作平台获取卡密后输入验证。
+        <p className="text-sm text-gray-400 mb-1">
+          本站为工具展示平台，不涉及在线交易。请通过合作平台获取激活码后输入验证。
         </p>
+        <p className="text-xs text-gold/90 mb-4">体验版 1 元起 · STAR 改写 · ATS 关键词 · 面试题预测</p>
 
         <div className="space-y-3 mb-5">
           {tiers.map((t) => (
@@ -52,13 +53,13 @@ export default function PaywallModal({
                 rel="noopener noreferrer"
                 className="inline-block w-full text-center rounded-lg bg-gold/90 hover:bg-gold text-black font-semibold py-2 text-sm transition"
               >
-                前往获取卡密
+                前往获取激活码
               </a>
             </div>
           ))}
         </div>
 
-        <label className="block text-sm text-gray-400 mb-2">已有卡密？输入后验证解锁</label>
+        <label className="block text-sm text-gray-400 mb-2">已有激活码？输入后验证解锁</label>
         <input
           value={cardCode}
           onChange={(e) => onCardCodeChange(e.target.value)}

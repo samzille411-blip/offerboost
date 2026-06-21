@@ -50,4 +50,13 @@ export function buildLevelPrompt(level: number): string {
 export const ANALYZE_PROMPT = `${SAFETY_PROMPT}
 请对比简历与JD，仅输出 JSON（不要 markdown 代码块）：
 {"score":0-100的整数,"issues":["硬伤1","硬伤2","硬伤3"],"summary":"一句话总结"}
-issues 必须恰好3条。无效/乱填内容时 score 为 0，issues 提示用户按页面说明填写真实信息。不要输出付费级改写内容。`;
+
+【有效简历+JD】score 按真实匹配度 1-100。issues 必须恰好 3 条，每条 15-35 字：
+- 毒舌、直接、专业，必须基于用户实际内容，直击真实硬伤（如：缺乏量化数据、未体现 JD 核心关键词、经历描述空泛、技能与岗位错配等）
+- 让用户感到「说中了我」，激发解锁完整报告的意愿
+- 不要泛泛而谈，不要输出付费级改写/STAR 全文
+summary 一句话点出最大匹配差距。
+
+【明显无效/乱填】score 为 0，issues 温和引导用户补充真实简历与完整 JD。
+
+不要输出付费级改写内容。`;
