@@ -48,8 +48,13 @@ export async function POST(req: Request) {
     const issues = (parsed.issues || []).slice(0, 3);
     while (issues.length < 3) issues.push("待进一步分析");
 
+    const rawScore = Number(parsed.score);
+    const score = Number.isFinite(rawScore)
+      ? Math.min(100, Math.max(0, rawScore))
+      : 0;
+
     return NextResponse.json({
-      score: Math.min(100, Math.max(0, Number(parsed.score) || 50)),
+      score,
       issues,
       summary: parsed.summary || "",
     });
