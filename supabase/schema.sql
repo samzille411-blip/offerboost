@@ -25,6 +25,17 @@ create table if not exists usage_log (
 create index if not exists usage_log_card_idx on usage_log(card_code);
 create index if not exists usage_log_request_idx on usage_log(request_id) where request_id is not null;
 
+-- 免费诊断结果缓存（仅存 content_hash + 诊断 JSON，不存简历/JD 原文）
+create table if not exists analyze_cache (
+  content_hash text primary key,
+  score integer not null check (score between 0 and 100),
+  issues jsonb not null,
+  summary text not null default '',
+  created_at timestamptz not null default now()
+);
+
+alter table analyze_cache enable row level security;
+
 alter table cards enable row level security;
 alter table usage_log enable row level security;
 

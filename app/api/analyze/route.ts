@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { getCachedAnalyze, setCachedAnalyze } from "@/lib/analyze-cache";
+import { hashResumeJd } from "@/lib/content-hash";
+import { DEMO_ANALYZE_RESULT, isDemoAnalyzeInput } from "@/lib/demo-sample";
 import { getLLMClient, getAnalyzeModel, ANALYZE_PROMPT } from "@/lib/llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { buildInvalidInputResult, isObviouslyInvalidInput } from "@/lib/input-validation";
@@ -24,6 +27,16 @@ export async function POST(req: Request) {
       return NextResponse.json(buildInvalidInputResult());
     }
 
+    if (isDemoAnalyzeInput(resume, jd)) {
+      return NextResponse.json(DEMO_ANALYZE_RESULT);
+    }
+
+    const contentHash = await hashResumeJd(resume, jd);
+    const cached = await getCachedAnalyze(contentHash);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     if (!process.env.LLM_API_KEY) {
       return NextResponse.json({ error: "AI 服务未配置，请联系管理员" }, { status: 503 });
     }
@@ -33,7 +46,7 @@ export async function POST(req: Request) {
       const client = getLLMClient();
       completion = await client.chat.completions.create({
         model: getAnalyzeModel(),
-        temperature: 0.2,
+        temperature: 0,
         max_tokens: Number(process.env.LLM_ANALYZE_MAX_TOKENS || 300),
         messages: [
           { role: "system", content: ANALYZE_PROMPT },
@@ -66,12 +79,16 @@ export async function POST(req: Request) {
       ? Math.min(100, Math.max(0, rawScore))
       : 0;
 
-    return NextResponse.json({
+    const result = {
       score,
       issues,
       summary: parsed.summary || "",
-      inputValid: true,
-    });
+      inputValid: true as const,
+    };
+
+    await setCachedAnalyze(contentHash, result);
+
+    return NextResponse.json(result);
   } catch (e) {
     console.error("analyze error", e);
     const mapped = mapLlmErrorToResponse(e);
