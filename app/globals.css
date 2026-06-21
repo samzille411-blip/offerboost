@@ -1,0 +1,23 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #0a0a0a;
+  color: #e5e7eb;
+  min-height: 100vh;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.blur-lock {
+  filter: blur(8px);
+  user-select: none;
+  pointer-events: none;
+}
