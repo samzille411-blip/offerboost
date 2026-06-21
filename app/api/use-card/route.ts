@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const ip = getClientIp(req);
     const max = Number(process.env.RATE_LIMIT_MAX_USE_CARD || 5);
     if (!checkRateLimit(`use-card:${ip}`, max)) {
-      return NextResponse.json({ error: userMessages.rateLimited }, { status: 429 });
+      return NextResponse.json({ error: userMessages.rateLimited, code: "rate_limited" }, { status: 429 });
     }
 
     if (!isSupabaseConfigured()) {
@@ -59,9 +59,6 @@ export async function POST(req: Request) {
     if (fetchError || !card) {
       return NextResponse.json({ error: "卡密不存在，请前往合作平台获取" }, { status: 404 });
     }
-    if (card.used_times >= card.total_times) {
-      return NextResponse.json({ error: "该卡密可用次数已耗尽" }, { status: 403 });
-    }
 
     const { data: redeem, error: redeemError } = await supabase.rpc("redeem_card", { p_code: code });
     if (redeemError || !redeem?.ok) {
@@ -92,10 +89,7 @@ export async function POST(req: Request) {
       }
       aiContent = formatPremiumReportDisplay(aiContent);
     } catch (llmErr) {
-      await supabase
-        .from("cards")
-        .update({ used_times: Math.max(0, card.used_times) })
-        .eq("code", code);
+      await supabase.rpc("rollback_card_redemption", { p_code: code });
       console.error("llm error, rolled back", llmErr);
       if (llmErr instanceof Error && llmErr.message === "blocked_content") {
         return NextResponse.json(

@@ -16,6 +16,8 @@ export type AnalyzeResult = {
   summary?: string;
   /** false = 明显无效输入，不应弹出付费墙 */
   inputValid?: boolean;
+  /** 未解锁时的后端混淆占位，非真实付费报告 */
+  premiumTeaser?: string;
 };
 
 export type TierInfo = {

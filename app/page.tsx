@@ -376,10 +376,12 @@ export default function HomePage() {
 
               <div className={`relative rounded-xl border border-gray-800 bg-black/40 p-4 mt-4 ${!unlocked ? "pb-20" : ""}`}>
                 {!unlocked && <div className="absolute inset-0 z-10 rounded-xl bg-black/30 backdrop-blur-[2px]" />}
-                <div className={!unlocked ? "blur-lock" : ""}>
+                <div className={!unlocked ? "blur-lock select-none" : ""} aria-hidden={!unlocked}>
                   <h3 className="text-sm font-semibold text-gold mb-2">AI 深度优化报告</h3>
                   {unlocked && aiReport ? (
                     <PremiumReport content={aiReport} />
+                  ) : analyze.premiumTeaser ? (
+                    <PremiumReport content={analyze.premiumTeaser} />
                   ) : (
                     <p className="text-xs text-gray-500 leading-relaxed">
                       STAR 法则改写 · ATS 关键词 · 面试题预测…

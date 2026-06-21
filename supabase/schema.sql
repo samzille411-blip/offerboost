@@ -39,31 +39,59 @@ alter table analyze_cache enable row level security;
 alter table cards enable row level security;
 alter table usage_log enable row level security;
 
--- 核销 RPC：每次成功生成扣 1 次
+-- 核销 RPC：原子条件 UPDATE，并发安全
 create or replace function redeem_card(p_code text)
 returns jsonb
 language plpgsql
 as $$
 declare
-  v record;
+  v cards%rowtype;
 begin
-  select * into v from cards where code = p_code for update;
+  update cards
+  set used_times = used_times + 1
+  where code = p_code and used_times < total_times
+  returning * into v;
+
   if not found then
+    if exists (select 1 from cards where code = p_code) then
+      return jsonb_build_object('ok', false, 'error', 'exhausted');
+    end if;
     return jsonb_build_object('ok', false, 'error', 'not_found');
   end if;
-  if v.used_times >= v.total_times then
-    return jsonb_build_object('ok', false, 'error', 'exhausted');
-  end if;
-  update cards set used_times = used_times + 1 where code = p_code;
+
   return jsonb_build_object(
     'ok', true,
     'level', v.level,
     'total_times', v.total_times,
-    'used_times', v.used_times + 1,
-    'remaining', v.total_times - v.used_times - 1
+    'used_times', v.used_times,
+    'remaining', v.total_times - v.used_times
   );
 end;
 $$;
+
+-- LLM 失败时回滚扣次（原子）
+create or replace function rollback_card_redemption(p_code text)
+returns jsonb
+language plpgsql
+as $$
+declare
+  v cards%rowtype;
+begin
+  update cards
+  set used_times = greatest(0, used_times - 1)
+  where code = p_code and used_times > 0
+  returning * into v;
+
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'nothing_to_rollback');
+  end if;
+
+  return jsonb_build_object('ok', true, 'used_times', v.used_times);
+end;
+$$;
+
+create unique index if not exists usage_log_request_id_unique
+  on usage_log(request_id) where request_id is not null;
 
 -- 补货批次记录
 create table if not exists card_batches (

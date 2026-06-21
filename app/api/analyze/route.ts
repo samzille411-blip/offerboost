@@ -7,13 +7,18 @@ import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { buildInvalidInputResult, isObviouslyInvalidInput } from "@/lib/input-validation";
 import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { generatePremiumTeaser } from "@/lib/premium-teaser";
+
+function withTeaser<T extends Record<string, unknown>>(payload: T, seed = 0): T & { premiumTeaser: string } {
+  return { ...payload, premiumTeaser: generatePremiumTeaser(seed) };
+}
 
 export async function POST(req: Request) {
   try {
     const ip = getClientIp(req);
-    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 5);
+    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 3);
     if (!checkRateLimit(`analyze:${ip}`, max)) {
-      return NextResponse.json({ error: userMessages.rateLimited }, { status: 429 });
+      return NextResponse.json({ error: userMessages.rateLimited, code: "rate_limited" }, { status: 429 });
     }
 
     const { resume, jd } = await req.json();
@@ -28,13 +33,14 @@ export async function POST(req: Request) {
     }
 
     if (isDemoAnalyzeInput(resume, jd)) {
-      return NextResponse.json(DEMO_ANALYZE_RESULT);
+      return NextResponse.json(withTeaser(DEMO_ANALYZE_RESULT, 0));
     }
 
     const contentHash = await hashResumeJd(resume, jd);
+    const teaserSeed = parseInt(contentHash.slice(0, 2), 16);
     const cached = await getCachedAnalyze(contentHash);
     if (cached) {
-      return NextResponse.json(cached);
+      return NextResponse.json(withTeaser(cached, teaserSeed));
     }
 
     if (!process.env.LLM_API_KEY) {
@@ -88,7 +94,7 @@ export async function POST(req: Request) {
 
     await setCachedAnalyze(contentHash, result);
 
-    return NextResponse.json(result);
+    return NextResponse.json(withTeaser(result, teaserSeed));
   } catch (e) {
     console.error("analyze error", e);
     const mapped = mapLlmErrorToResponse(e);
