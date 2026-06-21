@@ -34,7 +34,7 @@ export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
   if (path === "/api/analyze") {
-    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 3);
+    const max = Number(process.env.RATE_LIMIT_MAX_ANALYZE || 5);
     if (!checkRateLimit(`mw:analyze:${ip}`, max, WINDOW_MS)) {
       return NextResponse.json(
         { error: "操作过于频繁，请稍后再试", code: "rate_limited" },
