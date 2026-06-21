@@ -5,6 +5,7 @@ import { fetchPremiumReportFromLlm } from "@/lib/fetch-premium-llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { userMessages } from "@/lib/user-messages";
 import { enforceUseCardRateLimit } from "@/lib/use-card-rate-limit";
+import { enforcePremiumLlmGlobalRateLimit } from "@/lib/upstash-rate-limit";
 import { getClientIp, sha256 } from "@/lib/rate-limit";
 
 export const maxDuration = 120;
@@ -63,6 +64,9 @@ export async function POST(req: Request) {
     if (!exists) {
       return NextResponse.json({ error: "卡密不存在，请前往合作平台获取" }, { status: 404 });
     }
+
+    const globalLimited = await enforcePremiumLlmGlobalRateLimit();
+    if (!globalLimited.ok) return globalLimited.response;
 
     const { data: redeem, error: redeemError } = await supabase.rpc("redeem_card", { p_code: code });
     if (redeemError || !redeem?.ok) {

@@ -21,6 +21,7 @@ import {
 import PremiumReport from "@/components/PremiumReport";
 import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
 import { DEMO_JD, DEMO_RESUME } from "@/lib/demo-sample";
+import { userMessages } from "@/lib/user-messages";
 
 function uuid() {
   return crypto.randomUUID();
@@ -216,7 +217,12 @@ export default function HomePage() {
         body: JSON.stringify({ resume, jd }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "分析失败");
+      if (!res.ok) {
+        if (data.code === "global_queue") {
+          throw new Error(data.error || userMessages.globalQueue);
+        }
+        throw new Error(data.error || "分析失败");
+      }
       setAnalyze(data);
       setUnlocked(false);
       setAiReport("");
