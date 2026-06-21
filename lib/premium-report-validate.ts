@@ -8,7 +8,8 @@ export function isPremiumReportComplete(raw: string, level: number): boolean {
   if (level === 1) {
     return (
       (/##\s*硬伤诊断/i.test(formatted) || parsed.issues.length >= 2) &&
-      /##\s*优化示范/i.test(formatted)
+      (/##\s*STAR/i.test(formatted) || parsed.starBullets.length >= 1) &&
+      (/##\s*ATS/i.test(formatted) || parsed.atsKeywords.length >= 2)
     );
   }
 

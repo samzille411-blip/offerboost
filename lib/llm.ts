@@ -60,7 +60,7 @@ const STD_SECTIONS = `## 致命问题
 （恰好 5 个 JD 关键词，每条一行，格式：**关键词** — 建议嵌入位置与写法）`;
 
 export function getPremiumMaxTokens(level: number): number {
-  if (level === 1) return Number(process.env.LLM_PREMIUM_MAX_TOKENS_EXP || 800);
+  if (level === 1) return Number(process.env.LLM_PREMIUM_MAX_TOKENS_EXP || 1400);
   if (level === 2) return Number(process.env.LLM_PREMIUM_MAX_TOKENS_STD || 2200);
   return Number(process.env.LLM_PREMIUM_MAX_TOKENS_VIP || 3200);
 }
@@ -72,13 +72,16 @@ export function buildLevelPrompt(level: number): string {
     "\n请对比【个人简历】与【目标岗位JD】输出优化报告。\n";
 
   if (level === 1) {
-    return `${base}【体验版】全文不超过 500 字。只能有以下两个章节：
+    return `${base}【体验版】全文不超过 750 字。只能有以下三个章节：
 
 ## 硬伤诊断
-（恰好 3 条，每条 1-2 句，直击要害）
+（恰好 3 条，每条 2-3 句，基于简历与 JD 的具体错配，比免费区更深入、更可执行）
 
-## 优化示范
-（1 段，针对最显眼的工作经历，150 字以内 STAR 风格改写）`;
+## STAR 法则改写
+（恰好 2 条，每条单独一段，70-100 字，针对用户最相关的 2 段经历，含情境/行动/结果与可量化成果）
+
+## ATS 关键词速览
+（恰好 3 个 JD 高频词，每条一行，格式：**关键词** — 建议嵌入位置与一句话写法）`;
   }
   if (level === 2) {
     return `${base}【标准版】全文不超过 1000 字。只能有以下三个章节：

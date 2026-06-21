@@ -33,8 +33,8 @@ export function getTiers(): TierInfo[] {
     {
       id: "exp",
       name: "体验版",
-      desc: "1 次深度优化",
-      bullets: ["快速定位核心硬伤", "简短改写示范"],
+      desc: "1 次 · 轻量完整",
+      bullets: ["3 条深度硬伤诊断", "2 条 STAR 改写示范", "3 个 ATS 关键词速览"],
       shopUrl: process.env.NEXT_PUBLIC_SHOP_URL_EXP || "#",
     },
     {
