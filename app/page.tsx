@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PaywallModal from "@/components/PaywallModal";
 import Footer from "@/components/Footer";
-import { AnalyzeResult, LS_CARD, LS_INPUTS, LS_REPORT, SS_LLM_PROBE, LLM_PROBE_CLIENT_TTL_MS, getTiers } from "@/lib/constants";
+import {
+  AnalyzeResult,
+  LS_CARD,
+  LS_INPUTS,
+  LS_PIN_JD,
+  LS_PIN_RESUME,
+  LS_REPORT,
+  LS_SAVED_JD,
+  LS_SAVED_RESUME,
+  SS_LLM_PROBE,
+  LLM_PROBE_CLIENT_TTL_MS,
+  getTiers,
+} from "@/lib/constants";
 
 function uuid() {
   return crypto.randomUUID();
@@ -20,19 +32,58 @@ export default function HomePage() {
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const [loadingUnlock, setLoadingUnlock] = useState(false);
   const [error, setError] = useState("");
+  const [pinResume, setPinResume] = useState(false);
+  const [pinJd, setPinJd] = useState(false);
 
   const tiers = useMemo(() => getTiers(), []);
+
+  const syncPinnedField = useCallback(
+    (field: "resume" | "jd", value: string, pinned: boolean) => {
+      if (field === "resume") {
+        if (pinned && value.trim()) {
+          localStorage.setItem(LS_SAVED_RESUME, value);
+          localStorage.setItem(LS_PIN_RESUME, "1");
+        } else if (!pinned) {
+          localStorage.setItem(LS_PIN_RESUME, "0");
+        }
+        return;
+      }
+      if (pinned && value.trim()) {
+        localStorage.setItem(LS_SAVED_JD, value);
+        localStorage.setItem(LS_PIN_JD, "1");
+      } else if (!pinned) {
+        localStorage.setItem(LS_PIN_JD, "0");
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     try {
       const savedCard = localStorage.getItem(LS_CARD);
       const savedReport = localStorage.getItem(LS_REPORT);
+      const resumePinned = localStorage.getItem(LS_PIN_RESUME) === "1";
+      const jdPinned = localStorage.getItem(LS_PIN_JD) === "1";
+      setPinResume(resumePinned);
+      setPinJd(jdPinned);
+
+      const pinnedResume = localStorage.getItem(LS_SAVED_RESUME);
+      const pinnedJd = localStorage.getItem(LS_SAVED_JD);
       const savedInputs = localStorage.getItem(LS_INPUTS);
+      let inputsResume = "";
+      let inputsJd = "";
       if (savedInputs) {
         const p = JSON.parse(savedInputs);
-        if (p.resume) setResume(p.resume);
-        if (p.jd) setJd(p.jd);
+        inputsResume = p.resume || "";
+        inputsJd = p.jd || "";
       }
+
+      if (resumePinned && pinnedResume) setResume(pinnedResume);
+      else if (inputsResume) setResume(inputsResume);
+
+      if (jdPinned && pinnedJd) setJd(pinnedJd);
+      else if (inputsJd) setJd(inputsJd);
+
       if (savedCard) setCardCode(savedCard);
       if (savedReport) {
         setAiReport(savedReport);
@@ -48,6 +99,36 @@ export default function HomePage() {
     localStorage.setItem(LS_REPORT, report);
     localStorage.setItem(LS_INPUTS, JSON.stringify(inputs));
   }, []);
+
+  const handleResumeChange = (value: string) => {
+    setResume(value);
+    syncPinnedField("resume", value, pinResume);
+  };
+
+  const handleJdChange = (value: string) => {
+    setJd(value);
+    syncPinnedField("jd", value, pinJd);
+  };
+
+  const handlePinResume = (checked: boolean) => {
+    setPinResume(checked);
+    if (checked && resume.trim()) {
+      localStorage.setItem(LS_SAVED_RESUME, resume);
+      localStorage.setItem(LS_PIN_RESUME, "1");
+    } else {
+      localStorage.setItem(LS_PIN_RESUME, "0");
+    }
+  };
+
+  const handlePinJd = (checked: boolean) => {
+    setPinJd(checked);
+    if (checked && jd.trim()) {
+      localStorage.setItem(LS_SAVED_JD, jd);
+      localStorage.setItem(LS_PIN_JD, "1");
+    } else {
+      localStorage.setItem(LS_PIN_JD, "0");
+    }
+  };
 
   const handleAnalyze = async () => {
     setError("");
@@ -126,21 +207,39 @@ export default function HomePage() {
             <label className="text-sm text-gray-400 mb-2 block">粘贴你的简历</label>
             <textarea
               value={resume}
-              onChange={(e) => setResume(e.target.value)}
+              onChange={(e) => handleResumeChange(e.target.value)}
               rows={10}
               placeholder="工作经历、项目、技能…"
               className="w-full rounded-xl border border-gray-800 bg-panel p-4 text-sm focus:border-accent outline-none"
             />
+            <label className="mt-2 flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={pinResume}
+                onChange={(e) => handlePinResume(e.target.checked)}
+                className="rounded border-gray-600 bg-panel accent-accent"
+              />
+              保存此简历，便于一份简历匹配多个岗位
+            </label>
           </div>
           <div>
             <label className="text-sm text-gray-400 mb-2 block">粘贴目标岗位 JD</label>
             <textarea
               value={jd}
-              onChange={(e) => setJd(e.target.value)}
+              onChange={(e) => handleJdChange(e.target.value)}
               rows={10}
               placeholder="岗位职责、任职要求…"
               className="w-full rounded-xl border border-gray-800 bg-panel p-4 text-sm focus:border-accent outline-none"
             />
+            <label className="mt-2 flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={pinJd}
+                onChange={(e) => handlePinJd(e.target.checked)}
+                className="rounded border-gray-600 bg-panel accent-accent"
+              />
+              保存此 JD，便于同一岗位对比多版简历
+            </label>
           </div>
           <button
             onClick={handleAnalyze}

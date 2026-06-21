@@ -1,6 +1,10 @@
 export const LS_CARD = "offerboost_card";
 export const LS_REPORT = "offerboost_report";
 export const LS_INPUTS = "offerboost_inputs";
+export const LS_SAVED_RESUME = "offerboost_saved_resume";
+export const LS_SAVED_JD = "offerboost_saved_jd";
+export const LS_PIN_RESUME = "offerboost_pin_resume";
+export const LS_PIN_JD = "offerboost_pin_jd";
 export const SS_LLM_PROBE = "offerboost_llm_probe_at";
 
 /** 浏览器会话内探活缓存（毫秒），与 LLM_PROBE_CACHE_MS 保持一致 */
