@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import PaywallModal from "@/components/PaywallModal";
 import Footer from "@/components/Footer";
 import { buildInvalidInputResult, isObviouslyInvalidInput } from "@/lib/input-validation";
-import { getScoreStyle } from "@/lib/score-style";
+import { clampScore, getScoreStyle } from "@/lib/score-style";
 import {
   AnalyzeResult,
   LS_CARD,
@@ -43,7 +43,11 @@ export default function HomePage() {
   const tiers = useMemo(() => getTiers(), []);
   const scoreStyle = useMemo(
     () => (analyze ? getScoreStyle(analyze.score) : null),
-    [analyze]
+    [analyze?.score]
+  );
+  const scorePercent = useMemo(
+    () => (analyze ? clampScore(analyze.score) : 0),
+    [analyze?.score]
   );
 
   const syncPinnedField = useCallback(
@@ -351,14 +355,20 @@ export default function HomePage() {
               <div>
                 <div className="flex items-end gap-3 flex-wrap">
                   <span
-                    className={`text-5xl font-black tabular-nums ${scoreStyle?.textClass} ${scoreStyle?.glowClass}`}
+                    className="text-5xl font-black tabular-nums transition-colors duration-500"
+                    style={
+                      scoreStyle
+                        ? { color: scoreStyle.color, textShadow: scoreStyle.glow }
+                        : undefined
+                    }
                   >
-                    {analyze.score}
+                    {scorePercent}
                   </span>
                   <span className="text-gray-400 text-sm pb-2">/ 100 匹配度</span>
                   {scoreStyle && (
                     <span
                       className={`mb-1 text-xs font-medium px-2.5 py-0.5 rounded-full border ${scoreStyle.badgeClass}`}
+                      style={{ color: scoreStyle.color, borderColor: `${scoreStyle.color}80` }}
                     >
                       {scoreStyle.label}
                     </span>
@@ -366,8 +376,11 @@ export default function HomePage() {
                 </div>
                 <div className="mt-3 h-2 rounded-full bg-gray-800 overflow-hidden">
                   <div
-                    className={`h-full rounded-full transition-all duration-500 ${scoreStyle?.barClass}`}
-                    style={{ width: `${Math.min(100, Math.max(0, analyze.score))}%` }}
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      width: `${scorePercent}%`,
+                      backgroundColor: scoreStyle?.barColor ?? "#6b7280",
+                    }}
                   />
                 </div>
                 <div className="mt-1.5 flex justify-between text-[10px] text-gray-600">
