@@ -10,11 +10,19 @@ export function getLLMClient() {
 }
 
 export function getAnalyzeModel() {
-  return process.env.LLM_MODEL_ANALYZE || process.env.LLM_MODEL || "deepseek-chat";
+  return (
+    process.env.LLM_MODEL_ANALYZE ||
+    process.env.LLM_MODEL ||
+    "deepseek-v4-flash"
+  );
 }
 
 export function getPremiumModel() {
-  return process.env.LLM_MODEL_PREMIUM || process.env.LLM_MODEL || "deepseek-chat";
+  return (
+    process.env.LLM_MODEL_PREMIUM ||
+    process.env.LLM_MODEL ||
+    "deepseek-v4-pro"
+  );
 }
 
 export const SAFETY_PROMPT = `你是资深 HRBP，仅提供简历与 JD 匹配、优化建议。

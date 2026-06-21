@@ -29,6 +29,7 @@ export async function POST(req: Request) {
       completion = await client.chat.completions.create({
         model: getAnalyzeModel(),
         temperature: 0.2,
+        max_tokens: Number(process.env.LLM_ANALYZE_MAX_TOKENS || 300),
         messages: [
           { role: "system", content: ANALYZE_PROMPT },
           { role: "user", content: `【用户简历】\n${resume}\n\n【目标岗位JD】\n${jd}` },
