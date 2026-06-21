@@ -1,6 +1,6 @@
 "use client";
 
-import { parsePremiumReport } from "@/lib/format-premium-report";
+import { cleanStarBullet, parsePremiumReport } from "@/lib/format-premium-report";
 
 type Props = { content: string };
 
@@ -107,7 +107,7 @@ export default function PremiumReport({ content }: Props) {
           <ul className="space-y-3">
             {parsed.starBullets.map((item, i) => (
               <li key={i} className="rounded-lg bg-gray-900/60 border border-gray-800 p-3 text-gray-200">
-                {item.replace(/^STAR改写\d+[（(].*?[）)]\s*[→->]\s*/, "")}
+                {cleanStarBullet(item)}
               </li>
             ))}
           </ul>

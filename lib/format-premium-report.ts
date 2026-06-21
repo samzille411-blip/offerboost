@@ -115,8 +115,9 @@ function cleanIssue(text: string): string {
   return text.replace(/^致命问题\d+[：:]\s*/, "").trim();
 }
 
-function cleanStar(text: string): string {
-  return text.replace(/^STAR改写\d+[（(].*?[）)]\s*[→->]\s*/, "").trim();
+/** 去掉 LLM 返回的 STAR 条目前缀，如 STAR改写1（原：…）→ */
+export function cleanStarBullet(text: string): string {
+  return text.replace(/^STAR改写\d+[（(].*?[）)]\s*(?:→|->)\s*/, "").trim();
 }
 
 /** 统一转为可读 Markdown（服务端/旧缓存均可用） */
@@ -146,7 +147,7 @@ export function formatPremiumReportDisplay(raw: string): string {
   if (parsed.starBullets.length > 0) {
     lines.push(`## STAR 法则像素级改写`, ``);
     parsed.starBullets.forEach((item, i) => {
-      lines.push(`**经历 ${i + 1}**`, cleanStar(item), ``);
+      lines.push(`**经历 ${i + 1}**`, cleanStarBullet(item), ``);
     });
   }
 
