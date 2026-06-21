@@ -355,7 +355,9 @@ export default function HomePage() {
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2">毒舌硬伤诊断（免费）</h3>
                 {analyze.inputValid !== false && (
-                  <p className="text-xs text-gray-500 mb-2">以下 3 条为 AI 真实诊断，解锁后可看 STAR 改写与 ATS 关键词</p>
+                  <p className="text-xs text-gray-500 mb-2 leading-relaxed">
+                    💡 3 大核心硬伤已免费为您诊断。请购买卡密，即刻解锁下方针对该硬伤的【STAR 法则像素级改写】与【ATS 高频关键词增强】👇
+                  </p>
                 )}
                 <ol className="list-decimal list-inside space-y-2 text-sm text-gray-300">
                   {analyze.issues.map((issue, i) => (
