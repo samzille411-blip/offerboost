@@ -135,10 +135,6 @@ export function formatPremiumReportDisplay(raw: string): string {
 
   const lines: string[] = [];
 
-  if (parsed.score != null) {
-    lines.push(`## 综合匹配参考分`, ``, `${parsed.score} / 100`, ``);
-  }
-
   if (parsed.issues.length > 0) {
     lines.push(`## 致命问题`, ``);
     parsed.issues.forEach((issue, i) => lines.push(`${i + 1}. ${cleanIssue(issue)}`, ``));

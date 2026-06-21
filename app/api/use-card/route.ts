@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
 import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
-import { getLLMClient, getPremiumModel, buildLevelPrompt } from "@/lib/llm";
+import { getLLMClient, getPremiumModel, buildLevelPrompt, getPremiumMaxTokens } from "@/lib/llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
 import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { checkRateLimit, getClientIp, sha256 } from "@/lib/rate-limit";
@@ -78,7 +78,8 @@ export async function POST(req: Request) {
       const client = getLLMClient();
       const completion = await client.chat.completions.create({
         model: getPremiumModel(),
-        temperature: 0.3,
+        temperature: 0,
+        max_tokens: getPremiumMaxTokens(level),
         messages: [
           { role: "system", content: buildLevelPrompt(level) },
           { role: "user", content: `【用户简历】\n${resume}\n\n【目标岗位JD】\n${jd}` },

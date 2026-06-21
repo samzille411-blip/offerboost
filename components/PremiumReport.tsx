@@ -86,12 +86,6 @@ export default function PremiumReport({ content }: Props) {
 
   return (
     <div className="space-y-1 text-sm text-gray-300 leading-relaxed">
-      {parsed.score != null && (
-        <p className="text-xs text-gray-500 mb-3">
-          综合匹配参考分：<span className="text-gray-200">{parsed.score}</span> / 100
-        </p>
-      )}
-
       {parsed.issues.length > 0 && (
         <Section title="致命问题诊断">
           <ol className="list-decimal list-inside space-y-2">
