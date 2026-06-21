@@ -18,6 +18,7 @@ import {
   LLM_PROBE_CLIENT_TTL_MS,
   getTiers,
 } from "@/lib/constants";
+import { DEMO_JD, DEMO_RESUME } from "@/lib/demo-sample";
 
 function uuid() {
   return crypto.randomUUID();
@@ -134,6 +135,12 @@ export default function HomePage() {
     } else {
       localStorage.setItem(LS_PIN_JD, "0");
     }
+  };
+
+  const handleLoadDemo = () => {
+    handleResumeChange(DEMO_RESUME);
+    handleJdChange(DEMO_JD);
+    setError("");
   };
 
   const handleAnalyze = async () => {
@@ -272,8 +279,35 @@ export default function HomePage() {
 
         <section className="rounded-2xl border border-gray-800 bg-panel p-5 min-h-[420px]">
           {!analyze ? (
-            <div className="h-full flex items-center justify-center text-gray-500 text-sm text-center px-6">
-              请在左侧输入简历与 JD，点击「开始 AI 智能匹配」
+            <div className="h-full flex flex-col gap-4 text-sm">
+              <p className="text-gray-500 text-center px-2">
+                请在左侧输入简历与 JD，点击「开始 AI 智能匹配」
+              </p>
+              <p className="text-xs text-gray-600 text-center leading-relaxed px-1">
+                💡 不知道效果？复制下方【示例数据】到左边，或点按钮一键填入，1 秒免费看诊断效果 ➡️
+              </p>
+              <div className="flex-1 min-h-0 rounded-xl border border-gray-800 bg-black/30 overflow-hidden flex flex-col">
+                <div className="px-3 py-2 border-b border-gray-800 text-xs text-gray-500 shrink-0">
+                  示例数据（可复制体验）
+                </div>
+                <div className="overflow-y-auto p-3 space-y-3 text-xs text-gray-400 leading-relaxed max-h-52">
+                  <div>
+                    <p className="text-gray-500 font-medium mb-1">【示例简历】</p>
+                    <pre className="whitespace-pre-wrap font-sans">{DEMO_RESUME}</pre>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 font-medium mb-1">【示例 JD】</p>
+                    <pre className="whitespace-pre-wrap font-sans">{DEMO_JD}</pre>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleLoadDemo}
+                className="w-full rounded-lg border border-accent/40 bg-accent/10 hover:bg-accent/20 text-accent text-sm font-semibold py-2.5 transition"
+              >
+                一键填入示例 · 免费体验诊断
+              </button>
             </div>
           ) : (
             <div className="space-y-5">
