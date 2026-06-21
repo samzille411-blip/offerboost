@@ -168,7 +168,7 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "分析失败");
       setAnalyze(data);
-      if (data.inputValid !== false && data.score > 0) {
+      if (data.inputValid !== false) {
         setShowPaywall(true);
       }
     } catch (e) {

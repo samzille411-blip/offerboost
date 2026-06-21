@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       score,
       issues,
       summary: parsed.summary || "",
-      inputValid: score > 0,
+      inputValid: true,
     });
   } catch (e) {
     console.error("analyze error", e);

@@ -1,8 +1,6 @@
 import { AnalyzeResult } from "@/lib/constants";
 
-const MIN_RESUME_LEN = 20;
-const MIN_JD_LEN = 15;
-
+/** 仅拦截极明显乱填（1、2、纯数字等），其余交给 AI 判断 */
 function isGibberish(text: string): boolean {
   const t = text.trim();
   if (t.length <= 2) return true;
@@ -12,11 +10,10 @@ function isGibberish(text: string): boolean {
   return false;
 }
 
-/** 明显不是有效简历/JD 的输入（过短、纯数字、重复字符等） */
 export function isObviouslyInvalidInput(resume: string, jd: string): boolean {
   const r = resume.trim();
   const j = jd.trim();
-  if (r.length < MIN_RESUME_LEN || j.length < MIN_JD_LEN) return true;
+  if (r.length < 3 || j.length < 3) return true;
   if (isGibberish(r) || isGibberish(j)) return true;
   return false;
 }
