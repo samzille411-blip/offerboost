@@ -9,6 +9,7 @@ import { buildInvalidInputResult, isObviouslyInvalidInput } from "@/lib/input-va
 import { enforceAnalyzeLlmRateLimit } from "@/lib/upstash-rate-limit";
 import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { generatePremiumTeaser } from "@/lib/premium-teaser";
+import { validateInputLength } from "@/lib/input-limits";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -23,8 +24,9 @@ export async function POST(req: Request) {
     if (!resume?.trim() || !jd?.trim()) {
       return NextResponse.json({ error: userMessages.emptyResumeJd }, { status: 400 });
     }
-    if (resume.length > 8000 || jd.length > 8000) {
-      return NextResponse.json({ error: userMessages.tooLong }, { status: 400 });
+    const lengthCheck = validateInputLength(String(resume), String(jd));
+    if (!lengthCheck.ok) {
+      return NextResponse.json({ error: lengthCheck.message, code: "input_too_long" }, { status: 400 });
     }
     if (isObviouslyInvalidInput(resume, jd)) {
       return NextResponse.json(buildInvalidInputResult());

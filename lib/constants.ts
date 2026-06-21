@@ -1,4 +1,5 @@
 export const LS_CARD = "offerboost_card";
+export const LS_UNLOCK_HASH = "offerboost_unlock_hash";
 export const LS_REPORT = "offerboost_report";
 export const LS_INPUTS = "offerboost_inputs";
 export const LS_SAVED_RESUME = "offerboost_saved_resume";

@@ -1,11 +1,25 @@
 const buckets = new Map<string, { count: number; reset: number }>();
 
+const MAX_BUCKETS = 5000;
+const PRUNE_INTERVAL_MS = 60_000;
+let lastPruneAt = 0;
+
+function pruneExpiredBuckets(now: number) {
+  if (buckets.size < MAX_BUCKETS && now - lastPruneAt < PRUNE_INTERVAL_MS) return;
+  lastPruneAt = now;
+  buckets.forEach((entry, key) => {
+    if (now > entry.reset) buckets.delete(key);
+  });
+}
+
 export function checkRateLimit(
   ip: string,
   max: number,
   windowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60000)
 ): boolean {
   const now = Date.now();
+  pruneExpiredBuckets(now);
+
   const entry = buckets.get(ip);
   if (!entry || now > entry.reset) {
     buckets.set(ip, { count: 1, reset: now + windowMs });

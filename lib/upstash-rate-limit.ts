@@ -1,7 +1,7 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
-import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { checkRateLimit, getClientIp, sha256 } from "@/lib/rate-limit";
 import { userMessages } from "@/lib/user-messages";
 
 export type LlmRateLimitResult =
@@ -26,6 +26,9 @@ function getRedis(): Redis | null {
 
 let analyzeIpLimiter: Ratelimit | null = null;
 let globalLlmLimiter: Ratelimit | null = null;
+let useCardValidLimiter: Ratelimit | null = null;
+let useCardInvalidLimiter: Ratelimit | null = null;
+let probeIpLimiter: Ratelimit | null = null;
 
 function getAnalyzeIpLimiter(redis: Redis): Ratelimit {
   if (!analyzeIpLimiter) {
@@ -53,6 +56,48 @@ function getGlobalLlmLimiter(redis: Redis): Ratelimit {
     });
   }
   return globalLlmLimiter;
+}
+
+function getUseCardValidLimiter(redis: Redis): Ratelimit {
+  if (!useCardValidLimiter) {
+    useCardValidLimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.fixedWindow(
+        Number(process.env.RATE_LIMIT_MAX_USE_CARD_VALID) || 12,
+        windowDuration()
+      ),
+      prefix: "offerboost:use-card:valid",
+    });
+  }
+  return useCardValidLimiter;
+}
+
+function getUseCardInvalidLimiter(redis: Redis): Ratelimit {
+  if (!useCardInvalidLimiter) {
+    useCardInvalidLimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.fixedWindow(
+        Number(process.env.RATE_LIMIT_MAX_USE_CARD_INVALID) || 5,
+        windowDuration()
+      ),
+      prefix: "offerboost:use-card:invalid",
+    });
+  }
+  return useCardInvalidLimiter;
+}
+
+function getProbeIpLimiter(redis: Redis): Ratelimit {
+  if (!probeIpLimiter) {
+    probeIpLimiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.fixedWindow(
+        Number(process.env.RATE_LIMIT_MAX_PROBE) || 8,
+        windowDuration()
+      ),
+      prefix: "offerboost:ip:probe",
+    });
+  }
+  return probeIpLimiter;
 }
 
 function rateLimitedResponse(
@@ -141,4 +186,74 @@ export async function enforcePremiumLlmGlobalRateLimit(): Promise<LlmRateLimitRe
 
 export function isUpstashConfigured(): boolean {
   return !!getRedis();
+}
+
+type CardSnapshot = {
+  exists: boolean;
+  hasRemaining: boolean;
+};
+
+function useCardRateLimitedResponse() {
+  return NextResponse.json(
+    { error: `${userMessages.rateLimited}（本次未扣次数）`, code: "rate_limited" },
+    { status: 429, headers: { "Retry-After": String(Math.ceil(windowMs() / 1000)) } }
+  );
+}
+
+/** 卡密核销前限流：有效卡按卡号 hash；无效/耗尽卡按 IP（Upstash 优先） */
+export async function enforceUseCardRateLimit(
+  req: Request,
+  cardCode: string,
+  card: CardSnapshot
+): Promise<NextResponse | null> {
+  const redis = getRedis();
+  const win = windowMs();
+
+  if (card.exists && card.hasRemaining) {
+    const cardKey = await sha256(cardCode.trim());
+    const max = Number(process.env.RATE_LIMIT_MAX_USE_CARD_VALID) || 12;
+
+    if (redis) {
+      const { success } = await getUseCardValidLimiter(redis).limit(cardKey);
+      if (!success) return useCardRateLimitedResponse();
+      return null;
+    }
+    if (!checkRateLimit(`use-card:valid:${cardKey}`, max, win)) {
+      return useCardRateLimitedResponse();
+    }
+    return null;
+  }
+
+  const ip = getClientIp(req);
+  const max = Number(process.env.RATE_LIMIT_MAX_USE_CARD_INVALID) || 5;
+
+  if (redis) {
+    const { success } = await getUseCardInvalidLimiter(redis).limit(ip);
+    if (!success) return useCardRateLimitedResponse();
+    return null;
+  }
+  if (!checkRateLimit(`use-card:invalid:${ip}`, max, win)) {
+    return useCardRateLimitedResponse();
+  }
+  return null;
+}
+
+/** LLM 探活限流 */
+export async function enforceProbeRateLimit(req: Request): Promise<NextResponse | null> {
+  const ip = getClientIp(req);
+  const max = Number(process.env.RATE_LIMIT_MAX_PROBE) || 8;
+  const redis = getRedis();
+
+  if (redis) {
+    const { success } = await getProbeIpLimiter(redis).limit(ip);
+    if (!success) {
+      return NextResponse.json({ error: "请求过于频繁，请稍后再试", code: "rate_limited" }, { status: 429 });
+    }
+    return null;
+  }
+
+  if (!checkRateLimit(`llm-probe:${ip}`, max, windowMs())) {
+    return NextResponse.json({ error: "请求过于频繁，请稍后再试", code: "rate_limited" }, { status: 429 });
+  }
+  return null;
 }

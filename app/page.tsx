@@ -14,6 +14,7 @@ import {
   LS_REPORT,
   LS_SAVED_JD,
   LS_SAVED_RESUME,
+  LS_UNLOCK_HASH,
   SS_LLM_PROBE,
   LLM_PROBE_CLIENT_TTL_MS,
   getTiers,
@@ -21,6 +22,8 @@ import {
 import PremiumReport from "@/components/PremiumReport";
 import Toast from "@/components/Toast";
 import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
+import { hashResumeJd } from "@/lib/content-hash";
+import { validateInputLength } from "@/lib/input-limits";
 import { DEMO_JD, DEMO_RESUME } from "@/lib/demo-sample";
 import { classifyUnlockError, userMessages, type UnlockErrorCode } from "@/lib/user-messages";
 
@@ -45,6 +48,8 @@ export default function HomePage() {
   const [toast, setToast] = useState<{ message: string; kind: "info" | "warn" } | null>(null);
   const [pinResume, setPinResume] = useState(false);
   const [pinJd, setPinJd] = useState(false);
+  const [cardRemaining, setCardRemaining] = useState<number | null>(null);
+  const [cardTotal, setCardTotal] = useState<number | null>(null);
 
   const tiers = useMemo(() => getTiers(), []);
   const scoreStyle = useMemo(
@@ -86,52 +91,107 @@ export default function HomePage() {
   );
 
   useEffect(() => {
-    try {
-      const savedCard = localStorage.getItem(LS_CARD);
-      const savedReport = localStorage.getItem(LS_REPORT);
-      const resumePinned = localStorage.getItem(LS_PIN_RESUME) === "1";
-      const jdPinned = localStorage.getItem(LS_PIN_JD) === "1";
-      setPinResume(resumePinned);
-      setPinJd(jdPinned);
+    let cancelled = false;
 
-      const pinnedResume = localStorage.getItem(LS_SAVED_RESUME);
-      const pinnedJd = localStorage.getItem(LS_SAVED_JD);
-      const savedInputs = localStorage.getItem(LS_INPUTS);
-      let inputsResume = "";
-      let inputsJd = "";
-      if (savedInputs) {
-        const p = JSON.parse(savedInputs);
-        inputsResume = p.resume || "";
-        inputsJd = p.jd || "";
-      }
+    async function restoreSession() {
+      try {
+        const savedCard = localStorage.getItem(LS_CARD);
+        const savedReport = localStorage.getItem(LS_REPORT);
+        const savedUnlockHash = localStorage.getItem(LS_UNLOCK_HASH);
+        const resumePinned = localStorage.getItem(LS_PIN_RESUME) === "1";
+        const jdPinned = localStorage.getItem(LS_PIN_JD) === "1";
+        if (!cancelled) {
+          setPinResume(resumePinned);
+          setPinJd(jdPinned);
+        }
 
-      if (resumePinned) {
-        setResume(pinnedResume ?? "");
-      } else if (inputsResume) {
-        setResume(inputsResume);
-      }
+        const pinnedResume = localStorage.getItem(LS_SAVED_RESUME);
+        const pinnedJd = localStorage.getItem(LS_SAVED_JD);
+        const savedInputs = localStorage.getItem(LS_INPUTS);
+        let inputsResume = "";
+        let inputsJd = "";
+        if (savedInputs) {
+          const p = JSON.parse(savedInputs);
+          inputsResume = p.resume || "";
+          inputsJd = p.jd || "";
+        }
 
-      if (jdPinned) {
-        setJd(pinnedJd ?? "");
-      } else if (inputsJd) {
-        setJd(inputsJd);
-      }
+        const nextResume = resumePinned ? pinnedResume ?? "" : inputsResume;
+        const nextJd = jdPinned ? pinnedJd ?? "" : inputsJd;
 
-      if (savedCard) setCardCode(savedCard);
-      if (savedReport) {
-        setAiReport(formatPremiumReportDisplay(savedReport));
-        setUnlocked(true);
+        if (!cancelled) {
+          if (resumePinned) setResume(nextResume);
+          else if (inputsResume) setResume(inputsResume);
+          if (jdPinned) setJd(nextJd);
+          else if (inputsJd) setJd(inputsJd);
+          if (savedCard) setCardCode(savedCard);
+        }
+
+        if (savedCard?.trim()) {
+          const res = await fetch(
+            `/api/check-card?code=${encodeURIComponent(savedCard.trim())}`
+          );
+          const cardData = await res.json();
+          if (!cancelled && cardData.ok && cardData.exists) {
+            setCardRemaining(cardData.remaining);
+            setCardTotal(cardData.total_times);
+          }
+        }
+
+        if (savedReport && savedUnlockHash && nextResume.trim() && nextJd.trim()) {
+          const currentHash = await hashResumeJd(nextResume, nextJd);
+          if (!cancelled && currentHash === savedUnlockHash) {
+            setAiReport(formatPremiumReportDisplay(savedReport));
+            setUnlocked(true);
+          } else if (!cancelled) {
+            localStorage.removeItem(LS_REPORT);
+            localStorage.removeItem(LS_UNLOCK_HASH);
+            setUnlocked(false);
+            setAiReport("");
+          }
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
     }
+
+    restoreSession();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const persistUnlock = useCallback((code: string, report: string, inputs: { resume: string; jd: string }) => {
-    localStorage.setItem(LS_CARD, code);
-    localStorage.setItem(LS_REPORT, report);
-    localStorage.setItem(LS_INPUTS, JSON.stringify(inputs));
-  }, []);
+  useEffect(() => {
+    if (!unlocked) return;
+    let cancelled = false;
+
+    (async () => {
+      const savedHash = localStorage.getItem(LS_UNLOCK_HASH);
+      if (!savedHash || !resume.trim() || !jd.trim()) return;
+      const currentHash = await hashResumeJd(resume, jd);
+      if (!cancelled && currentHash !== savedHash) {
+        setUnlocked(false);
+        setAiReport("");
+        localStorage.removeItem(LS_REPORT);
+        localStorage.removeItem(LS_UNLOCK_HASH);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resume, jd, unlocked]);
+
+  const persistUnlock = useCallback(
+    async (code: string, report: string, inputs: { resume: string; jd: string }) => {
+      const contentHash = await hashResumeJd(inputs.resume, inputs.jd);
+      localStorage.setItem(LS_CARD, code);
+      localStorage.setItem(LS_REPORT, report);
+      localStorage.setItem(LS_UNLOCK_HASH, contentHash);
+      localStorage.setItem(LS_INPUTS, JSON.stringify(inputs));
+    },
+    []
+  );
 
   const handleResumeChange = (value: string) => {
     setResume(value);
@@ -174,6 +234,7 @@ export default function HomePage() {
     syncPinnedField("resume", "", pinResume);
     persistInputs("", jd);
     localStorage.removeItem(LS_REPORT);
+    localStorage.removeItem(LS_UNLOCK_HASH);
     setAnalyze(null);
     setUnlocked(false);
     setAiReport("");
@@ -186,6 +247,7 @@ export default function HomePage() {
     syncPinnedField("jd", "", pinJd);
     persistInputs(resume, "");
     localStorage.removeItem(LS_REPORT);
+    localStorage.removeItem(LS_UNLOCK_HASH);
     setAnalyze(null);
     setUnlocked(false);
     setAiReport("");
@@ -211,6 +273,11 @@ export default function HomePage() {
 
   const handleAnalyze = async () => {
     setError("");
+    const lengthCheck = validateInputLength(resume, jd);
+    if (!lengthCheck.ok) {
+      setError(lengthCheck.message);
+      return;
+    }
     setLoadingAnalyze(true);
     try {
       if (isObviouslyInvalidInput(resume, jd)) {
@@ -263,6 +330,11 @@ export default function HomePage() {
   const handleUnlock = async () => {
     setError("");
     setUnlockError(null);
+    const lengthCheck = validateInputLength(resume, jd);
+    if (!lengthCheck.ok) {
+      setUnlockError({ code: "unlock_error", message: lengthCheck.message });
+      return;
+    }
     setLoadingUnlock(true);
     const requestId = uuid();
     try {
@@ -285,7 +357,10 @@ export default function HomePage() {
       setUnlocked(true);
       setShowPaywall(false);
       setUnlockError(null);
-      persistUnlock(cardCode, formatPremiumReportDisplay(data.aiContent), { resume, jd });
+      if (typeof data.remaining === "number") {
+        setCardRemaining(data.remaining);
+      }
+      await persistUnlock(cardCode, formatPremiumReportDisplay(data.aiContent), { resume, jd });
     } catch (e) {
       const message = e instanceof Error ? e.message : "网络错误";
       setUnlockError({ code: "unlock_error", message });
@@ -476,7 +551,9 @@ export default function HomePage() {
                     }`}
                   >
                     {unlocked
-                      ? "🎉 卡密激活成功！已为您像素级解锁全套深度改写报告与面试预测，祝您斩获心仪 Offer！"
+                      ? cardRemaining !== null && cardTotal !== null && cardTotal > 1
+                        ? `🎉 卡密激活成功！剩余 ${cardRemaining}/${cardTotal} 次 · 已解锁本份简历+JD 的深度报告`
+                        : "🎉 卡密激活成功！已为您像素级解锁全套深度改写报告与面试预测，祝您斩获心仪 Offer！"
                       : "💡 3 大核心硬伤已免费为您诊断。请购买卡密，即刻解锁下方针对该硬伤的【STAR 法则像素级改写】与【ATS 高频关键词增强】👇"}
                   </p>
                 )}

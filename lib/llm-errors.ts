@@ -9,6 +9,22 @@ export function mapLlmErrorToResponse(e: unknown): {
       ? Number((e as { status?: number }).status)
       : undefined;
 
+  const message =
+    e && typeof e === "object" && "message" in e
+      ? String((e as { message?: string }).message)
+      : "";
+
+  if (
+    status === 400 &&
+    /context|maximum context|token limit|too long|length exceeded/i.test(message)
+  ) {
+    return {
+      error: "您的简历/JD 过长，请精简至核心内容后再试",
+      status: 400,
+      code: "context_length",
+    };
+  }
+
   if (status === 402) {
     console.error("[LLM] balance exhausted (402) — 请在 DeepSeek 控制台充值");
     return {

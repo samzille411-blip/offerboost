@@ -7,6 +7,9 @@ export const userMessages = {
   blockedContent: "当前内容不符合使用规范，请修改后重试",
   parseFailed: "分析暂时遇到问题，请稍后重试",
   tooLong: "内容过长，请精简后重试",
+  tooLongResume: "您的简历过长，请精简至核心经历后再试（建议每项不超过 8000 字）。",
+  tooLongJd: "您的 JD 过长，请精简至核心要求后再试（建议每项不超过 8000 字）。",
+  tooLongBoth: "您的简历与 JD 均过长，请精简至核心内容后再试（建议每项不超过 8000 字）。",
   rateLimited: "操作过于频繁，请稍后再试",
   rateLimitedIp: "您点得频繁了些，请稍等一分钟~",
   globalQueue:
