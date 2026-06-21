@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PaywallModal from "@/components/PaywallModal";
 import Footer from "@/components/Footer";
+import { buildInvalidInputResult, isObviouslyInvalidInput } from "@/lib/input-validation";
 import { getScoreStyle } from "@/lib/score-style";
 import {
   AnalyzeResult,
@@ -141,7 +142,13 @@ export default function HomePage() {
     setAnalyze(null);
     setUnlocked(false);
     setAiReport("");
+    setShowPaywall(false);
     try {
+      if (isObviouslyInvalidInput(resume, jd)) {
+        setAnalyze(buildInvalidInputResult());
+        return;
+      }
+
       const probedAt = sessionStorage.getItem(SS_LLM_PROBE);
       const probeFresh =
         probedAt && Date.now() - Number(probedAt) < LLM_PROBE_CLIENT_TTL_MS;
@@ -161,7 +168,9 @@ export default function HomePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "分析失败");
       setAnalyze(data);
-      setShowPaywall(true);
+      if (data.inputValid !== false && data.score > 0) {
+        setShowPaywall(true);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "网络错误");
     } finally {
@@ -295,7 +304,15 @@ export default function HomePage() {
                   <span>100</span>
                 </div>
               </div>
-              {analyze.summary && <p className="text-sm text-gray-300">{analyze.summary}</p>}
+              {analyze.summary && (
+                <p
+                  className={`text-sm ${
+                    analyze.inputValid === false ? "text-red-400 font-medium" : "text-gray-300"
+                  }`}
+                >
+                  {analyze.summary}
+                </p>
+              )}
               <div>
                 <h3 className="text-sm font-semibold text-accent mb-2">毒舌硬伤诊断（免费）</h3>
                 <ol className="list-decimal list-inside space-y-2 text-sm text-gray-300">

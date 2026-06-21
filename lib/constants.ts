@@ -14,6 +14,8 @@ export type AnalyzeResult = {
   score: number;
   issues: string[];
   summary?: string;
+  /** false = 明显无效输入，不应弹出付费墙 */
+  inputValid?: boolean;
 };
 
 export type TierInfo = {

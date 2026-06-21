@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getLLMClient, getAnalyzeModel, ANALYZE_PROMPT } from "@/lib/llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
+import { buildInvalidInputResult, isObviouslyInvalidInput } from "@/lib/input-validation";
 import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 
@@ -18,6 +19,9 @@ export async function POST(req: Request) {
     }
     if (resume.length > 8000 || jd.length > 8000) {
       return NextResponse.json({ error: userMessages.tooLong }, { status: 400 });
+    }
+    if (isObviouslyInvalidInput(resume, jd)) {
+      return NextResponse.json(buildInvalidInputResult());
     }
 
     if (!process.env.LLM_API_KEY) {
@@ -66,6 +70,7 @@ export async function POST(req: Request) {
       score,
       issues,
       summary: parsed.summary || "",
+      inputValid: score > 0,
     });
   } catch (e) {
     console.error("analyze error", e);
