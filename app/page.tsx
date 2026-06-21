@@ -19,6 +19,7 @@ import {
   getTiers,
 } from "@/lib/constants";
 import PremiumReport from "@/components/PremiumReport";
+import Toast from "@/components/Toast";
 import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
 import { DEMO_JD, DEMO_RESUME } from "@/lib/demo-sample";
 import { userMessages } from "@/lib/user-messages";
@@ -38,6 +39,7 @@ export default function HomePage() {
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const [loadingUnlock, setLoadingUnlock] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<{ message: string; kind: "info" | "warn" } | null>(null);
   const [pinResume, setPinResume] = useState(false);
   const [pinJd, setPinJd] = useState(false);
 
@@ -188,6 +190,22 @@ export default function HomePage() {
     setError("");
   };
 
+  const showRateLimitToast = (code?: string, fallback?: string) => {
+    if (code === "global_queue") {
+      setToast({ message: userMessages.globalQueue, kind: "info" });
+      return true;
+    }
+    if (code === "rate_limited") {
+      setToast({ message: userMessages.rateLimitedIp, kind: "warn" });
+      return true;
+    }
+    if (fallback) {
+      setToast({ message: fallback, kind: "warn" });
+      return true;
+    }
+    return false;
+  };
+
   const handleAnalyze = async () => {
     setError("");
     setLoadingAnalyze(true);
@@ -207,7 +225,10 @@ export default function HomePage() {
       if (!probeFresh) {
         const probeRes = await fetch("/api/llm-probe", { method: "POST" });
         const probeData = await probeRes.json();
-        if (!probeRes.ok) throw new Error(probeData.error || "AI 服务暂不可用");
+        if (!probeRes.ok) {
+          if (probeRes.status === 429 && showRateLimitToast(probeData.code, probeData.error)) return;
+          throw new Error(probeData.error || "AI 服务暂不可用");
+        }
         sessionStorage.setItem(SS_LLM_PROBE, String(Date.now()));
       }
 
@@ -218,9 +239,7 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data.code === "global_queue") {
-          throw new Error(data.error || userMessages.globalQueue);
-        }
+        if (res.status === 429 && showRateLimitToast(data.code, data.error)) return;
         throw new Error(data.error || "分析失败");
       }
       setAnalyze(data);
@@ -249,7 +268,10 @@ export default function HomePage() {
         body: JSON.stringify({ card_code: cardCode, resume, jd, request_id: requestId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "验证失败");
+      if (!res.ok) {
+        if (res.status === 429 && showRateLimitToast(data.code, data.error)) return;
+        throw new Error(data.error || "验证失败");
+      }
       setAiReport(formatPremiumReportDisplay(data.aiContent));
       setUnlocked(true);
       setShowPaywall(false);
@@ -498,6 +520,12 @@ export default function HomePage() {
       />
 
       <Footer />
+
+      <Toast
+        message={toast?.message ?? null}
+        kind={toast?.kind}
+        onClose={() => setToast(null)}
+      />
     </main>
   );
 }
