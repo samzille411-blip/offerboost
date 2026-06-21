@@ -19,6 +19,7 @@ import {
   getTiers,
 } from "@/lib/constants";
 import PremiumReport from "@/components/PremiumReport";
+import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
 import { DEMO_JD, DEMO_RESUME } from "@/lib/demo-sample";
 
 function uuid() {
@@ -94,7 +95,7 @@ export default function HomePage() {
 
       if (savedCard) setCardCode(savedCard);
       if (savedReport) {
-        setAiReport(savedReport);
+        setAiReport(formatPremiumReportDisplay(savedReport));
         setUnlocked(true);
       }
     } catch {
@@ -198,10 +199,10 @@ export default function HomePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "验证失败");
-      setAiReport(data.aiContent);
+      setAiReport(formatPremiumReportDisplay(data.aiContent));
       setUnlocked(true);
       setShowPaywall(false);
-      persistUnlock(cardCode, data.aiContent, { resume, jd });
+      persistUnlock(cardCode, formatPremiumReportDisplay(data.aiContent), { resume, jd });
     } catch (e) {
       setError(e instanceof Error ? e.message : "网络错误");
     } finally {

@@ -11,9 +11,26 @@ export type ParsedPremiumReport = {
 };
 
 function stripCodeFence(text: string): string {
-  const trimmed = text.trim();
-  const m = trimmed.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
-  return m ? m[1].trim() : trimmed;
+  let trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) trimmed = fenced[1].trim();
+  return trimmed;
+}
+
+function extractJsonObject(text: string): Record<string, unknown> | null {
+  const trimmed = stripCodeFence(text);
+  const candidates = [trimmed];
+  const match = trimmed.match(/\{[\s\S]*\}/);
+  if (match) candidates.push(match[0]);
+  for (const candidate of candidates) {
+    if (!candidate.startsWith("{")) continue;
+    try {
+      return JSON.parse(candidate) as Record<string, unknown>;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
 }
 
 function pickStringArray(obj: Record<string, unknown>, keys: string[]): string[] {
@@ -68,33 +85,85 @@ function pickInterviews(obj: Record<string, unknown>): string[] {
 
 /** 将 LLM 返回的 JSON / Markdown 解析为结构化报告 */
 export function parsePremiumReport(raw: string): ParsedPremiumReport {
-  const text = stripCodeFence(raw);
-  if (text.startsWith("{")) {
-    try {
-      const obj = JSON.parse(text) as Record<string, unknown>;
-      const score = Number(obj.score);
-      return {
-        score: Number.isFinite(score) ? score : undefined,
-        issues: pickStringArray(obj, ["issues", "fatal_issues", "problems", "硬伤"]),
-        starBullets: pickStringArray(obj, [
-          "star_bullets",
-          "star_rewrite",
-          "star_rewrites",
-          "star",
-          "experiences",
-        ]),
-        atsKeywords: pickAtsKeywords(obj),
-        interviews: pickInterviews(obj),
-      };
-    } catch {
-      /* fall through */
-    }
+  const obj = extractJsonObject(raw);
+  if (obj) {
+    const score = Number(obj.score);
+    return {
+      score: Number.isFinite(score) ? score : undefined,
+      issues: pickStringArray(obj, ["issues", "fatal_issues", "problems", "硬伤"]),
+      starBullets: pickStringArray(obj, [
+        "star_bullets",
+        "star_rewrite",
+        "star_rewrites",
+        "star",
+        "experiences",
+      ]),
+      atsKeywords: pickAtsKeywords(obj),
+      interviews: pickInterviews(obj),
+    };
   }
   return {
     issues: [],
     starBullets: [],
     atsKeywords: [],
     interviews: [],
-    plainText: text,
+    plainText: stripCodeFence(raw),
   };
+}
+
+function cleanIssue(text: string): string {
+  return text.replace(/^致命问题\d+[：:]\s*/, "").trim();
+}
+
+function cleanStar(text: string): string {
+  return text.replace(/^STAR改写\d+[（(].*?[）)]\s*[→->]\s*/, "").trim();
+}
+
+/** 统一转为可读 Markdown（服务端/旧缓存均可用） */
+export function formatPremiumReportDisplay(raw: string): string {
+  const parsed = parsePremiumReport(raw);
+  const hasStructured =
+    parsed.issues.length > 0 ||
+    parsed.starBullets.length > 0 ||
+    parsed.atsKeywords.length > 0 ||
+    parsed.interviews.length > 0;
+
+  if (!hasStructured) {
+    return parsed.plainText || raw;
+  }
+
+  const lines: string[] = [];
+
+  if (parsed.score != null) {
+    lines.push(`## 综合匹配参考分`, ``, `${parsed.score} / 100`, ``);
+  }
+
+  if (parsed.issues.length > 0) {
+    lines.push(`## 致命问题`, ``);
+    parsed.issues.forEach((issue, i) => lines.push(`${i + 1}. ${cleanIssue(issue)}`, ``));
+  }
+
+  if (parsed.starBullets.length > 0) {
+    lines.push(`## STAR 法则像素级改写`, ``);
+    parsed.starBullets.forEach((item, i) => {
+      lines.push(`**经历 ${i + 1}**`, cleanStar(item), ``);
+    });
+  }
+
+  if (parsed.atsKeywords.length > 0) {
+    lines.push(`## ATS 高频关键词`, ``);
+    parsed.atsKeywords.forEach((kw) => {
+      lines.push(`- **${kw.keyword}**${kw.position ? ` — ${kw.position}` : ""}`);
+    });
+    lines.push(``);
+  }
+
+  if (parsed.interviews.length > 0) {
+    lines.push(`## 面试必问题预测`, ``);
+    parsed.interviews.forEach((item, i) => {
+      lines.push(`**第 ${i + 1} 题**`, item, ``);
+    });
+  }
+
+  return lines.join("\n").trim();
 }

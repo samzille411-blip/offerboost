@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
 import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
 import { getLLMClient, getPremiumModel, buildLevelPrompt } from "@/lib/llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
           status: "success",
           remaining: card ? card.total_times - card.used_times : 0,
           level: dup.level,
-          aiContent: dup.report_text,
+          aiContent: formatPremiumReportDisplay(dup.report_text),
           idempotent: true,
         });
       }
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
       if (isBlockedLlmOutput(aiContent)) {
         throw new Error("blocked_content");
       }
+      aiContent = formatPremiumReportDisplay(aiContent);
     } catch (llmErr) {
       await supabase
         .from("cards")
