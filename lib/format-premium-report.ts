@@ -85,6 +85,18 @@ function pickInterviews(obj: Record<string, unknown>): string[] {
 
 /** 将 LLM 返回的 JSON / Markdown 解析为结构化报告 */
 export function parsePremiumReport(raw: string): ParsedPremiumReport {
+  const trimmed = stripCodeFence(raw);
+  // 已是 Markdown 章节时优先按 Markdown 展示，避免误解析为残缺 JSON
+  if (/^##\s/m.test(trimmed)) {
+    return {
+      issues: [],
+      starBullets: [],
+      atsKeywords: [],
+      interviews: [],
+      plainText: trimmed,
+    };
+  }
+
   const obj = extractJsonObject(raw);
   if (obj) {
     const score = Number(obj.score);

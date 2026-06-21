@@ -60,9 +60,9 @@ const STD_SECTIONS = `## 致命问题
 （恰好 5 个 JD 关键词，每条一行，格式：**关键词** — 建议嵌入位置与写法）`;
 
 export function getPremiumMaxTokens(level: number): number {
-  if (level === 1) return Number(process.env.LLM_PREMIUM_MAX_TOKENS_EXP || 600);
-  if (level === 2) return Number(process.env.LLM_PREMIUM_MAX_TOKENS_STD || 1600);
-  return Number(process.env.LLM_PREMIUM_MAX_TOKENS_VIP || 2400);
+  if (level === 1) return Number(process.env.LLM_PREMIUM_MAX_TOKENS_EXP || 800);
+  if (level === 2) return Number(process.env.LLM_PREMIUM_MAX_TOKENS_STD || 2200);
+  return Number(process.env.LLM_PREMIUM_MAX_TOKENS_VIP || 3200);
 }
 
 export function buildLevelPrompt(level: number): string {

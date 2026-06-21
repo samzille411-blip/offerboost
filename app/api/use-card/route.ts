@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { formatPremiumReportDisplay } from "@/lib/format-premium-report";
 import { getSupabaseAdmin, isSupabaseConfigured } from "@/lib/supabase";
-import { getLLMClient, getPremiumModel, buildLevelPrompt, getPremiumMaxTokens } from "@/lib/llm";
+import { fetchPremiumReportFromLlm } from "@/lib/fetch-premium-llm";
 import { mapLlmErrorToResponse } from "@/lib/llm-errors";
-import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
+import { userMessages } from "@/lib/user-messages";
 import { enforceUseCardRateLimit } from "@/lib/use-card-rate-limit";
 import { getClientIp, sha256 } from "@/lib/rate-limit";
+
+export const maxDuration = 120;
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
@@ -73,22 +76,7 @@ export async function POST(req: Request) {
     let aiContent = "";
 
     try {
-      const client = getLLMClient();
-      const completion = await client.chat.completions.create({
-        model: getPremiumModel(),
-        temperature: 0,
-        max_tokens: getPremiumMaxTokens(level),
-        messages: [
-          { role: "system", content: buildLevelPrompt(level) },
-          { role: "user", content: `【用户简历】\n${resume}\n\n【目标岗位JD】\n${jd}` },
-        ],
-      });
-      aiContent = completion.choices[0]?.message?.content || "";
-      if (!aiContent) throw new Error("empty response");
-      if (isBlockedLlmOutput(aiContent)) {
-        throw new Error("blocked_content");
-      }
-      aiContent = formatPremiumReportDisplay(aiContent);
+      aiContent = await fetchPremiumReportFromLlm(resume, jd, level);
     } catch (llmErr) {
       await supabase.rpc("rollback_card_redemption", { p_code: code });
       console.error("llm error, rolled back", llmErr);
@@ -96,6 +84,15 @@ export async function POST(req: Request) {
         return NextResponse.json(
           { error: `${userMessages.blockedContent}（次数已回滚，请修改内容后重试）` },
           { status: 400 }
+        );
+      }
+      if (llmErr instanceof Error && llmErr.message === "incomplete_report") {
+        return NextResponse.json(
+          {
+            error: "报告生成不完整，请稍后重试（次数已回滚，未扣费）",
+            code: "incomplete_report",
+          },
+          { status: 502 }
         );
       }
       const mapped = mapLlmErrorToResponse(llmErr);
