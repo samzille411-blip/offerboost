@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import PaywallModal from "@/components/PaywallModal";
 import Footer from "@/components/Footer";
+import { getScoreStyle } from "@/lib/score-style";
 import {
   AnalyzeResult,
   LS_CARD,
@@ -36,6 +37,10 @@ export default function HomePage() {
   const [pinJd, setPinJd] = useState(false);
 
   const tiers = useMemo(() => getTiers(), []);
+  const scoreStyle = useMemo(
+    () => (analyze ? getScoreStyle(analyze.score) : null),
+    [analyze]
+  );
 
   const syncPinnedField = useCallback(
     (field: "resume" | "jd", value: string, pinned: boolean) => {
@@ -258,9 +263,37 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-5">
-              <div className="flex items-end gap-3">
-                <span className="text-5xl font-black text-glow">{analyze.score}</span>
-                <span className="text-gray-400 text-sm pb-2">/ 100 匹配度</span>
+              <div>
+                <div className="flex items-end gap-3 flex-wrap">
+                  <span
+                    className={`text-5xl font-black tabular-nums ${scoreStyle?.textClass} ${scoreStyle?.glowClass}`}
+                  >
+                    {analyze.score}
+                  </span>
+                  <span className="text-gray-400 text-sm pb-2">/ 100 匹配度</span>
+                  {scoreStyle && (
+                    <span
+                      className={`mb-1 text-xs font-medium px-2.5 py-0.5 rounded-full border ${scoreStyle.badgeClass}`}
+                    >
+                      {scoreStyle.label}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 h-2 rounded-full bg-gray-800 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${scoreStyle?.barClass}`}
+                    style={{ width: `${Math.min(100, Math.max(0, analyze.score))}%` }}
+                  />
+                </div>
+                <div className="mt-1.5 flex justify-between text-[10px] text-gray-600">
+                  <span>0</span>
+                  <span className="text-red-500/80">&lt;40 偏低</span>
+                  <span className="text-orange-400/80">40-59</span>
+                  <span className="text-amber-400/80">60-74</span>
+                  <span className="text-cyan-400/80">75-89</span>
+                  <span className="text-emerald-400/80">90+ 优秀</span>
+                  <span>100</span>
+                </div>
               </div>
               {analyze.summary && <p className="text-sm text-gray-300">{analyze.summary}</p>}
               <div>
