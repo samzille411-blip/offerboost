@@ -372,19 +372,35 @@ export default function HomePage() {
   return (
     <main className="min-h-screen">
       <header className="border-b border-gray-800 bg-black/50">
-        <div className="max-w-6xl mx-auto px-4 py-5 flex items-center justify-between">
-          <div>
+        <div className="max-w-6xl mx-auto px-4 py-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
             <h1 className="text-xl font-bold tracking-tight">
               Offer<span className="text-accent">Boost</span>
             </h1>
-            <p className="text-xs mt-1.5 leading-relaxed">
-              <span className="text-gray-200">AI 1分钟改成大厂简历</span>
+            <p className="text-xs mt-1.5 leading-relaxed text-gray-200">
+              AI 1分钟改成大厂简历
               <span className="text-gray-500"> · </span>
-              <span className="text-gray-400">像素级对标 JD</span>
-              <span className="text-gold ml-1">（1元自救体验）</span>
+              像素级对标 JD
+            </p>
+            <p className="text-xs mt-2 leading-relaxed max-w-xl">
+              <span className="text-emerald-300 font-semibold">🔒 官方承诺：</span>
+              <span className="text-gray-200 font-medium">免注册登录</span>
+              <span className="text-gray-600"> | </span>
+              <span className="text-gray-200 font-medium">阅后即焚</span>
+              <span className="text-gray-600"> | </span>
+              <span className="text-emerald-200/90 font-semibold">
+                100%保护隐私，绝不收集、保存您的任何简历信息
+              </span>
             </p>
           </div>
-          <span className="text-xs text-glow border border-glow/30 rounded-full px-3 py-1">免注册使用</span>
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <span className="text-xs text-glow border border-glow/30 rounded-full px-3 py-1 whitespace-nowrap">
+              免注册使用
+            </span>
+            <span className="text-xs text-emerald-300 border border-emerald-500/40 bg-emerald-950/40 rounded-full px-3 py-1 whitespace-nowrap font-medium">
+              🔒 无痕处理
+            </span>
+          </div>
         </div>
       </header>
 
