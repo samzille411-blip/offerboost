@@ -148,3 +148,60 @@ export async function fetchDailyStats(days = 30): Promise<DailyStatRow[]> {
       unlock_total: b.unlockExp + b.unlockStd + b.unlockVip,
     }));
 }
+
+export type LifetimeStatTotals = {
+  page_views: number;
+  free_analyze: number;
+  unlock_exp: number;
+  unlock_std: number;
+  unlock_vip: number;
+};
+
+export async function fetchLifetimeStats(): Promise<LifetimeStatTotals> {
+  const supabase = getSupabaseAdmin();
+  const empty: LifetimeStatTotals = {
+    page_views: 0,
+    free_analyze: 0,
+    unlock_exp: 0,
+    unlock_std: 0,
+    unlock_vip: 0,
+  };
+
+  const [pageRes, analyzeRes, unlockRes] = await Promise.all([
+    supabase
+      .from("analytics_events")
+      .select("*", { count: "exact", head: true })
+      .eq("event", "page_view"),
+    supabase
+      .from("analytics_events")
+      .select("*", { count: "exact", head: true })
+      .eq("event", "free_analyze"),
+    supabase.from("analytics_events").select("level").eq("event", "unlock"),
+  ]);
+
+  if (pageRes.error) throw pageRes.error;
+  if (analyzeRes.error) throw analyzeRes.error;
+  if (unlockRes.error) throw unlockRes.error;
+
+  const totals = { ...empty, page_views: pageRes.count ?? 0, free_analyze: analyzeRes.count ?? 0 };
+  for (const row of unlockRes.data ?? []) {
+    if (row.level === 1) totals.unlock_exp += 1;
+    else if (row.level === 2) totals.unlock_std += 1;
+    else if (row.level === 3) totals.unlock_vip += 1;
+  }
+  return totals;
+}
+
+export function formatStatCounter(n: number): string {
+  return String(Math.min(99999, Math.max(0, Math.floor(n)))).padStart(5, "0");
+}
+
+export function formatPublicStatsLine(stats: LifetimeStatTotals): string {
+  return [
+    formatStatCounter(stats.page_views),
+    formatStatCounter(stats.free_analyze),
+    formatStatCounter(stats.unlock_exp),
+    formatStatCounter(stats.unlock_std),
+    formatStatCounter(stats.unlock_vip),
+  ].join("|");
+}

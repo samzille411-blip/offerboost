@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const DEFAULT_STATS = "00000|00000|00000|00000|00000";
+
 export default function Footer() {
   const [clicks, setClicks] = useState(0);
+  const [statsLine, setStatsLine] = useState(DEFAULT_STATS);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const legacy = process.env.NEXT_PUBLIC_LEGACY_SITE_URL || "http://120.27.247.36/";
   const compliance =
@@ -23,6 +26,21 @@ export default function Footer() {
   };
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/stats/public")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && typeof data.display === "string") {
+          setStatsLine(data.display);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <footer className="border-t border-gray-800 mt-16 py-8 text-center text-xs text-gray-500 space-y-4">
@@ -53,7 +71,10 @@ export default function Footer() {
           </>
         )}
       </p>
-      <p>© {new Date().getFullYear()} OfferBoost</p>
+      <p>
+        © {new Date().getFullYear()} OfferBoost{" "}
+        <span className="font-mono text-gray-600 tracking-wide">{statsLine}</span>
+      </p>
     </footer>
   );
 }
