@@ -9,6 +9,7 @@ import { enforcePremiumLlmGlobalRateLimit } from "@/lib/upstash-rate-limit";
 import { hashResumeJd } from "@/lib/content-hash";
 import { validateInputLength } from "@/lib/input-limits";
 import { getClientIp } from "@/lib/rate-limit";
+import { trackAnalytics } from "@/lib/analytics";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "AI 服务未配置" }, { status: 503 });
     }
 
-    const { card_code, resume, jd, request_id } = await req.json();
+    const { card_code, resume, jd, request_id, visitor_id: visitorId } = await req.json();
     if (!card_code?.trim() || !resume?.trim() || !jd?.trim()) {
       return NextResponse.json({ error: userMessages.emptyUnlock }, { status: 400 });
     }
@@ -202,6 +203,8 @@ export async function POST(req: Request) {
       typeof redeem.remaining === "number"
         ? redeem.remaining
         : Math.max(0, card.total_times - card.used_times - 1);
+
+    void trackAnalytics({ event: "unlock", req, visitorId, level });
 
     return NextResponse.json({
       status: "success",

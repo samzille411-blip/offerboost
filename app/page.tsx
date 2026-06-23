@@ -15,7 +15,9 @@ import {
   LS_SAVED_JD,
   LS_SAVED_RESUME,
   LS_UNLOCK_HASH,
+  LS_VISITOR_ID,
   SS_LLM_PROBE,
+  SS_PAGE_TRACKED,
   LLM_PROBE_CLIENT_TTL_MS,
   getTiers,
 } from "@/lib/constants";
@@ -29,6 +31,15 @@ import { classifyUnlockError, userMessages, type UnlockErrorCode } from "@/lib/u
 
 function uuid() {
   return crypto.randomUUID();
+}
+
+function getOrCreateVisitorId(): string {
+  let id = localStorage.getItem(LS_VISITOR_ID);
+  if (!id) {
+    id = uuid();
+    localStorage.setItem(LS_VISITOR_ID, id);
+  }
+  return id;
 }
 
 export default function HomePage() {
@@ -159,6 +170,17 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(SS_PAGE_TRACKED)) return;
+    sessionStorage.setItem(SS_PAGE_TRACKED, "1");
+    const visitorId = getOrCreateVisitorId();
+    fetch("/api/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event: "page_view", visitor_id: visitorId }),
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -305,7 +327,7 @@ export default function HomePage() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, jd }),
+        body: JSON.stringify({ resume, jd, visitor_id: getOrCreateVisitorId() }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -341,7 +363,13 @@ export default function HomePage() {
       const res = await fetch("/api/use-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card_code: cardCode, resume, jd, request_id: requestId }),
+        body: JSON.stringify({
+          card_code: cardCode,
+          resume,
+          jd,
+          request_id: requestId,
+          visitor_id: getOrCreateVisitorId(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {

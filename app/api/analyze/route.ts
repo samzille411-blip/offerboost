@@ -10,6 +10,7 @@ import { enforceAnalyzeLlmRateLimit } from "@/lib/upstash-rate-limit";
 import { isBlockedLlmOutput, userMessages } from "@/lib/user-messages";
 import { generatePremiumTeaser } from "@/lib/premium-teaser";
 import { validateInputLength } from "@/lib/input-limits";
+import { trackAnalytics } from "@/lib/analytics";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ function withTeaser<T extends Record<string, unknown>>(payload: T, seed = 0): T 
 
 export async function POST(req: Request) {
   try {
-    const { resume, jd } = await req.json();
+    const { resume, jd, visitor_id: visitorId } = await req.json();
     if (!resume?.trim() || !jd?.trim()) {
       return NextResponse.json({ error: userMessages.emptyResumeJd }, { status: 400 });
     }
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     }
 
     if (isDemoAnalyzeInput(resume, jd)) {
+      void trackAnalytics({ event: "free_analyze", req, visitorId });
       return NextResponse.json(withTeaser(DEMO_ANALYZE_RESULT, 0));
     }
 
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
     const teaserSeed = parseInt(contentHash.slice(0, 2), 16);
     const cached = await getCachedAnalyze(contentHash);
     if (cached) {
+      void trackAnalytics({ event: "free_analyze", req, visitorId });
       return NextResponse.json(withTeaser(cached, teaserSeed));
     }
 
@@ -85,6 +88,7 @@ export async function POST(req: Request) {
 
     await setCachedAnalyze(contentHash, result);
 
+    void trackAnalytics({ event: "free_analyze", req, visitorId });
     return NextResponse.json(withTeaser(result, teaserSeed));
   } catch (e) {
     console.error("analyze error", e);

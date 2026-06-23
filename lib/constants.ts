@@ -1,3 +1,5 @@
+export const LS_VISITOR_ID = "offerboost_visitor_id";
+export const SS_PAGE_TRACKED = "offerboost_page_tracked";
 export const LS_CARD = "offerboost_card";
 export const LS_UNLOCK_HASH = "offerboost_unlock_hash";
 export const LS_REPORT = "offerboost_report";
